@@ -1,0 +1,114 @@
+CREATE TABLE tipoBahia (
+	idTipoB SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	tipoBahia VARCHAR(50)
+);
+
+CREATE TABLE tipoControl (
+	idTipoC SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	tipoControl VARCHAR(30)
+);
+
+CREATE TABLE bahia (
+	idBahia SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	nombreBahia VARCHAR(20),
+	idTipoBahia SMALLINT,
+	idTipoControl SMALLINT,
+
+	FOREIGN KEY (idTipoBahia)
+	REFERENCES tipoBahia(idTipoB)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE,
+
+	FOREIGN KEY (idTipoControl)
+	REFERENCES tipoControl(idTipoC)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE
+);
+
+CREATE TABLE tipoVehiculo (
+    idTipoV SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tipoVehiculo VARCHAR(20)
+);
+
+CREATE TABLE vehiculo (
+    placa VARCHAR(10) PRIMARY KEY,
+	tipoV TEXT,
+	fotoVehiculo BYTEA,
+	fotoTarjetaP BYTEA,
+	color VARCHAR(50),
+	QR VARCHAR(100) UNIQUE,
+	idTipoVehiculo SMALLINT,
+
+	FOREIGN KEY (idTipoVehiculo)
+	REFERENCES tipoVehiculo(idTipoV)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE
+);
+
+CREATE TABLE tipoUsuario (
+    idTipoUsr SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	tipoUsr VARCHAR(20)
+);
+
+CREATE TABLE formacion (
+	ficha INT PRIMARY KEY,
+	nombre VARCHAR(100),
+	ambiente VARCHAR(4)
+);
+
+CREATE TABLE usuario (
+	documento INT PRIMARY KEY,
+	fotoPersona BYTEA,
+	nombreCompleto VARCHAR(50),
+	numTelf VARCHAR(10),
+	contactoEmerg VARCHAR(10),
+	correo VARCHAR(50) UNIQUE,
+	contra VARCHAR(255),
+	idTipoUsr SMALLINT,
+	idFormacion INT,
+
+	FOREIGN KEY (idTipoUsr)
+	REFERENCES tipoUsuario(idTipoUsr)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE,
+
+	FOREIGN KEY (idFormacion)
+	REFERENCES formacion(ficha)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE
+);
+
+CREATE TABLE registroVehiculo (
+	idRegistroV SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	idUsuario INT,
+	idVehiculo VARCHAR(10),
+	UNIQUE (idUsuario, idVehiculo),
+
+	FOREIGN KEY (idUsuario)
+	REFERENCES usuario(documento)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE,
+
+	FOREIGN KEY (idVehiculo)
+	REFERENCES vehiculo(placa)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE
+);
+
+CREATE TABLE movimientoVehiculo (
+	idControl SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	horaIngreso TIMESTAMP NULL,
+	horaSalida TIMESTAMP NULL,
+	idBahia SMALLINT,
+	idRegistroVehiculo SMALLINT,
+
+	FOREIGN KEY (idBahia)
+	REFERENCES bahia(idBahia)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE,
+
+	FOREIGN KEY (idRegistroVehiculo)
+	REFERENCES registroVehiculo(idRegistroV)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE
+);
