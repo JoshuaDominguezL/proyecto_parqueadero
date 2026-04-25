@@ -7,6 +7,7 @@ import {
     StyleSheet,
     Image,
 } from 'react-native';
+import { colors, fonts, espacios } from '../theme/senaTheme';
 
 export default function LoginScreen() {
     return (
@@ -40,46 +41,46 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
-        padding: 30,
+        backgroundColor: colors.blanco,
+        padding: espacios.grande,
         justifyContent: 'center',
     },
     titulo: {
-        fontSize: 28,
+        fontSize: fonts.titulo,
         fontWeight: 'bold',
-        marginBottom: 30,
-        color: '#000',
+        marginBottom: espacios.grande,
+        color: colors.negro,
     },
     label: {
-        fontSize: 14,
-        color: '#39b54a',
+        fontSize: fonts.normal,
+        color: colors.verde,
         fontWeight: 'bold',
-        marginBottom: 5,
+        marginBottom: espacios.pequeno,
     },
     input: {
         borderBottomWidth: 1,
-        borderBottomColor: '#ccc',
-        marginBottom: 20,
-        fontSize: 16,
-        paddingVertical: 5,
-        color: '#000',
+        borderBottomColor: colors.gris,
+        marginBottom: espacios.medio,
+        fontSize: fonts.medio,
+        paddingVertical: espacios.pequeno,
+        color: colors.negro,
     },
     boton: {
-        backgroundColor: '#39b54a',
+        backgroundColor: colors.verde,
         borderRadius: 25,
         paddingVertical: 14,
         alignItems: 'center',
-        marginTop:10,
-        marginBottom:20,
+        marginTop: espacios.pequeno,
+        marginBottom: espacios.medio,
     },
-    botonTexto:{
-        color: '#fff',
-        fontSize:16,
-        fontWeight:'bold',
+    botonTexto: {
+        color: colors.blanco,
+        fontSize: fonts.medio,
+        fontWeight: 'bold',
     },
-    link:{
-        color:'#39b54a',
-        textAlign:'center',
-        fontSize:14,
+    link: {
+        color: colors.verde,
+        textAlign: 'center',
+        fontSize: fonts.normal,
     },
 });
