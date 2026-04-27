@@ -1,9 +1,9 @@
-CREATE TABLE tipoBahia (
+CREATE TABLE tipo_bahia (
 	idTipoB SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	tipoBahia VARCHAR(50)
 );
 
-CREATE TABLE tipoControl (
+CREATE TABLE tipo_control (
 	idTipoC SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	tipoControl VARCHAR(30)
 );
@@ -25,7 +25,7 @@ CREATE TABLE bahia (
 	ON UPDATE CASCADE
 );
 
-CREATE TABLE tipoVehiculo (
+CREATE TABLE tipo_vehiculo (
     idTipoV SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tipoVehiculo VARCHAR(20)
 );
@@ -45,7 +45,7 @@ CREATE TABLE vehiculo (
 	ON UPDATE CASCADE
 );
 
-CREATE TABLE tipoUsuario (
+CREATE TABLE tipo_usuario (
     idTipoUsr SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	tipoUsr VARCHAR(20)
 );
@@ -78,7 +78,7 @@ CREATE TABLE usuario (
 	ON UPDATE CASCADE
 );
 
-CREATE TABLE registroVehiculo (
+CREATE TABLE registro_vehiculo (
 	idRegistroV SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	idUsuario INT,
 	idVehiculo VARCHAR(10),
@@ -95,7 +95,7 @@ CREATE TABLE registroVehiculo (
 	ON UPDATE CASCADE
 );
 
-CREATE TABLE movimientoVehiculo (
+CREATE TABLE movimiento_vehiculo (
 	idControl SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	horaIngreso TIMESTAMP NULL,
 	horaSalida TIMESTAMP NULL,
