@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { colors, fonts, espacios } from '../theme/senaTheme';
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }: any) {
     return (
         <View style={styles.container}>
             <Text style={styles.titulo}>Iniciar Sesion</Text>
@@ -32,8 +32,14 @@ export default function LoginScreen() {
             <TouchableOpacity style={styles.boton}>
                 <Text style={styles.botonTexto}>Iniciar</Text>
             </TouchableOpacity>
+            
+            <View style={styles.filaInferior}>
+                <Text style={styles.link}>¿Olvido su Contraseña?</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                    <Text style={styles.enlace}>Registrarse</Text>
+                </TouchableOpacity>
+            </View>
 
-            <Text style={styles.link}>¿Olvido su Contraseña?</Text>
         </View>
     );
 }
@@ -81,6 +87,15 @@ const styles = StyleSheet.create({
     link: {
         color: colors.verde,
         textAlign: 'center',
+        fontSize: fonts.normal,
+    },
+    filaInferior: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    enlace: {
+        color: colors.verde,
+        fontWeight: 'bold',
         fontSize: fonts.normal,
     },
 });
