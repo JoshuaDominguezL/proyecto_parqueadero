@@ -1,6 +1,6 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import axios from 'axios';
+import { pruebaCon } from './conexion';
 
 @Component({
   selector: 'app-root',
@@ -13,11 +13,13 @@ export class App implements OnInit {
   protected readonly backendMessage = signal<string>('Cargando...');
 
   async ngOnInit() {
+    console.log('Intentando conectar con el backend...');
     try {
-      const response = await axios.get('http://localhost:3000');
-      this.backendMessage.set(response.data);
+      const data = await pruebaCon();
+      console.log('Respuesta recibida:', data);
+      this.backendMessage.set(data);
     } catch (error) {
-      console.error('Error conectando con el backend:', error);
+      console.error('Error detallado:', error);
       this.backendMessage.set('Error al conectar con el backend');
     }
   }
