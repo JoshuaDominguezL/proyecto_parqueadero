@@ -1,0 +1,1 @@
+insert into formacion (ficha, nombre, ambiente) values (3066600, 'ADSO', '4109')

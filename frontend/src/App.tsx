@@ -1,11 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
+import api from './api/axios'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [message, setMessage] = useState('Conectando al backend...')
+
+  useEffect(() => {
+    api.get('/')
+      .then(response => {
+        setMessage(response.data)
+      })
+      .catch(error => {
+        console.error('Error al conectar con el backend:', error)
+        setMessage('Error al conectar con el backend')
+      })
+  }, [])
 
   return (
     <>
@@ -17,6 +30,9 @@ function App() {
         </div>
         <div>
           <h1>Get started</h1>
+          <p>
+            Backend status: <strong>{message}</strong>
+          </p>
           <p>
             Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
           </p>

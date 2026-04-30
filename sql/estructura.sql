@@ -1,0 +1,113 @@
+CREATE TABLE tipo_bahia (
+	idTipoB SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	tipoBahia VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE tipo_control (
+	idTipoC SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	tipoControl VARCHAR(30) NOT NULL
+);
+
+CREATE TABLE bahia (
+	idBahia SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	nombreBahia VARCHAR(20) NOT NULL,
+	idTipoBahia SMALLINT NOT NULL,
+	idTipoControl SMALLINT NOT NULL,
+
+	FOREIGN KEY (idTipoBahia)
+	REFERENCES tipo_bahia(idTipoB)
+	ON DELETE RESTRICT
+	ON UPDATE CASCADE,
+
+	FOREIGN KEY (idTipoControl)
+	REFERENCES tipo_control(idTipoC)
+	ON DELETE RESTRICT
+	ON UPDATE CASCADE
+);
+
+CREATE TABLE tipo_vehiculo (
+    idTipoV SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tipoVehiculo VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE vehiculo (
+    placa VARCHAR(10) PRIMARY KEY,
+	fotoVehiculo BYTEA NOT NULL,
+	fotoTarjetaP BYTEA NOT NULL,
+	color VARCHAR(50) NOT NULL,
+	idTipoVehiculo SMALLINT NOT NULL,
+
+	FOREIGN KEY (idTipoVehiculo)
+	REFERENCES tipo_vehiculo(idTipoV)
+	ON DELETE RESTRICT
+	ON UPDATE CASCADE
+);
+
+CREATE TABLE tipo_usuario (
+    idTipoUsr SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	tipoUsr VARCHAR(20) UNIQUE NOT NULL
+);
+
+CREATE TYPE jornadas AS ENUM('MAÑANA', 'TARDE', 'NOCHE');
+
+CREATE TABLE formacion (
+	ficha VARCHAR(6) PRIMARY KEY,
+	nombre VARCHAR(100) NOT NULL,
+	ambiente VARCHAR(4),
+	jornada jornadas
+);
+
+CREATE TABLE usuario (
+	documento VARCHAR(10) PRIMARY KEY,
+	fotoPersona BYTEA NOT NULL,
+	nombreCompleto VARCHAR(50) NOT NULL,
+	numTelf VARCHAR(10) NOT NULL,
+	contactoEmerg VARCHAR(10) NOT NULL,
+	correo VARCHAR(50) UNIQUE NOT NULL,
+	contra VARCHAR(255) NOT NULL,
+	idTipoUsr SMALLINT NOT NULL,
+	idFormacion VARCHAR(6),
+	QR VARCHAR(100) UNIQUE,
+
+	FOREIGN KEY (idTipoUsr)
+	REFERENCES tipo_usuario(idTipoUsr)
+	ON DELETE RESTRICT
+	ON UPDATE CASCADE,
+
+	FOREIGN KEY (idFormacion)
+	REFERENCES formacion(ficha)
+	ON DELETE RESTRICT
+	ON UPDATE CASCADE
+);
+
+CREATE TABLE registro_vehiculo (
+	idRegistroV INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	idUsuario VARCHAR(10) NOT NULL,
+	idVehiculo VARCHAR(10) NOT NULL,
+
+	UNIQUE (idUsuario, idVehiculo),
+
+	FOREIGN KEY (idUsuario)
+	REFERENCES usuario(documento)
+	ON DELETE RESTRICT
+	ON UPDATE RESTRICT,
+
+	FOREIGN KEY (idVehiculo)
+	REFERENCES vehiculo(placa)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE
+);
+CREATE TYPE estado_mov AS ENUM ('ADENTRO', 'SALIDA');
+
+CREATE TABLE movimiento_vehiculo (
+	idMovimiento INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	horaIngreso TIMESTAMP NOT NULL,
+	horaSalida TIMESTAMP,
+	idRegistroVehiculo INT NOT NULL,
+	estado estado_mov,
+	
+	FOREIGN KEY (idRegistroVehiculo)
+	REFERENCES registro_vehiculo(idRegistroV)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE
+);
