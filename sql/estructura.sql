@@ -1,3 +1,5 @@
+CREATE DATABASE parqueadero;
+
 CREATE TABLE tipo_bahia (
 	idTipoB SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	tipoBahia VARCHAR(50) NOT NULL
@@ -32,8 +34,8 @@ CREATE TABLE tipo_vehiculo (
 
 CREATE TABLE vehiculo (
     placa VARCHAR(10) PRIMARY KEY,
-	fotoVehiculo BYTEA NOT NULL,
-	fotoTarjetaP BYTEA NOT NULL,
+	fotoVehiculo VARCHAR(255) NOT NULL,
+	fotoTarjetaP VARCHAR(255) NOT NULL,
 	color VARCHAR(50) NOT NULL,
 	idTipoVehiculo SMALLINT NOT NULL,
 
@@ -51,7 +53,7 @@ CREATE TABLE tipo_usuario (
 CREATE TYPE jornadas AS ENUM('MAÑANA', 'TARDE', 'NOCHE');
 
 CREATE TABLE formacion (
-	ficha VARCHAR(6) PRIMARY KEY,
+	ficha VARCHAR(7) PRIMARY KEY,
 	nombre VARCHAR(100) NOT NULL,
 	ambiente VARCHAR(4),
 	jornada jornadas
@@ -59,7 +61,7 @@ CREATE TABLE formacion (
 
 CREATE TABLE usuario (
 	documento VARCHAR(10) PRIMARY KEY,
-	fotoPersona BYTEA NOT NULL,
+	fotoPersona VARCHAR(255) NOT NULL,
 	nombreCompleto VARCHAR(50) NOT NULL,
 	numTelf VARCHAR(10) NOT NULL,
 	contactoEmerg VARCHAR(10) NOT NULL,
