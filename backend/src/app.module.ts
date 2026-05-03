@@ -1,9 +1,12 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+// AQUI ESTA LA CONEXION A LA BASE DE DATOS
+// NO OLVIDEN CREAR SU .ENV
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -27,4 +30,17 @@ import { AppService } from './app.service';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+
+export class AppModule implements OnModuleInit {
+  private readonly logger = new Logger(AppModule.name);
+
+  constructor(private dataSource: DataSource) {}
+
+  onModuleInit() {
+    if (this.dataSource.isInitialized) {
+      this.logger.log('Conexión a la base de datos establecida');
+    } else {
+      this.logger.error('Error al conectar con la base de datos');
+    }
+  }
+}
