@@ -28,7 +28,18 @@ function Login() {
       console.log('Login exitoso:', response.data);
       login(response.data); // Guardar estado de autenticación
       setStatus(`Bienvenido, ${response.data.nombreCompleto}`);
-      navigate('/'); // Redirigir al main
+      
+      // Redirigir según el rol
+      const rol = response.data.idTipoUsr;
+      if (rol === 1) {
+        navigate('/app');
+      } else if (rol === 2) {
+        navigate('/appadmin');
+      } else if (rol === 3) {
+        navigate('/appperop');
+      } else {
+        navigate('/'); // Redirección por defecto
+      }
     } catch (error: any) {
       console.error('Error en el login:', error);
       setStatus(`Error: ${error.response?.data?.message || 'Credenciales incorrectas o error de servidor'}`);
