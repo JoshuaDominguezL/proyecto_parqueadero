@@ -1,6 +1,17 @@
-import { useState } from "react";
+import React, {
+  useState,
+} from "react";
+import heroImage from "./assets/sena.registro.png";
+import logoSena from "/logo.png";
 
-// Tipos para el formulario
+// Colores SENA
+const SENA_GREEN = "#39A900";
+const SENA_GREEN_DARK = "#2d8500";
+const SENA_GREEN_LIGHT = "#e6f4ea";
+const TEXT_DARK = "#333333";
+const TEXT_GRAY = "#666666";
+const BORDER_COLOR = "#e0e0e0";
+
 interface FormData {
   documento: string;
   nombreCompleto: string;
@@ -9,17 +20,24 @@ interface FormData {
   correo: string;
   programa: string;
   contrasena: string;
+  foto: File | null;
 }
 
 const programas = [
-  "ADSO",
-  "Contabilidad",
-  "Diseño Gráfico",
-  "Electrónica",
-  "Mecatrónica",
-  "Redes y Seguridad",
-  "Salud Pública",
-  "Turismo",
+  "Tecnología en Gestión de Recursos de Plantas de Producción ",
+  "Tecnología en Desarrollo de Colecciones para la Industria de la Moda",
+  "Tecnología en Levantamientos Topográficos y Georreferenciación",
+  "Tecnología en Coordinación de Sistemas Integrados de Gestión",
+  "Tecnología en Desarrollo de Sistemas Electrónicos Industriales",
+  "Tecnología en Mantenimiento Electromecánico Industrial",
+  "Tecnología en Desarrollo de Videojuegos y Entornos Interactivos",
+  "Tecnología en Implementación de Redes y Servicios de Telecomunicaciones",
+  "Tecnología en Desarrollo y Modelado de Productos Industriales",
+  "Tecnología en Gestión de Redes de Datos",
+  "Tecnología en Automatización de Sistemas Mecatrónicos ",
+  "Tecnología en Gestión del Mantenimiento de Automotores",
+  "Tecnología en Producción de Elementos Mecánicos con Máquinas y Herramientas CNC",
+  "Tecnología en Análisis y Desarrollo de Software",
 ];
 
 export default function Registro() {
@@ -31,24 +49,52 @@ export default function Registro() {
     correo: "",
     programa: "",
     contrasena: "",
+    foto: null,
   });
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exito, setExito] = useState(false);
   const [cargando, setCargando] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (e.target instanceof HTMLInputElement && e.target.type === 'file') {
+      const file = e.target.files?.[0] || null;
+      setFormData({ ...formData, foto: file });
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFotoPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setFotoPreview(null);
+      }
+    } else {
+      setFormData({ ...formData, [e.target.name]: e.target.value });
+    }
   };
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setError(null);
+    setExito(false);
+
+    // Validación de campos vacíos (excluyendo la foto de Object.values si se maneja diferente, 
+    // pero aquí la incluiremos en la lógica de 'trim' para los strings y chequeo nulo para la foto)
+    const { foto, ...rest } = formData;
+    const camposVacios = Object.values(rest).some((value) => value.trim() === "") || !foto;
+    
+    if (camposVacios) {
+      setError("Registre todos los datos requeridos");
+      return;
+    }
+
     setCargando(true);
 
     try {
-      // Ajusta la URL a la de tu backend
       const response = await fetch("http://localhost:3000/api/registro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,8 +105,9 @@ export default function Registro() {
         throw new Error("Error al registrar el usuario. Intente de nuevo.");
       }
 
-      // Redirigir o mostrar éxito según tu lógica
-      alert("¡Usuario registrado exitosamente!");
+      setExito(true);
+      // Opcional: limpiar formulario tras éxito
+      // setFormData({ documento: "", nombreCompleto: "", ... });
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -74,193 +121,382 @@ export default function Registro() {
 
   return (
     <div style={styles.pageWrapper}>
+      <style>
+        {`
+          .input-focus:focus {
+            border-color: ${SENA_GREEN} !important;
+            box-shadow: 0 0 0 2px ${SENA_GREEN_LIGHT};
+          }
+          .btn-hover:hover {
+            background-color: ${SENA_GREEN_DARK} !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(57, 169, 0, 0.2);
+          }
+          .btn-hover:active {
+            transform: translateY(0);
+          }
+          .input-hover:hover {
+            border-color: #bbbbbb;
+          }
+
+          /* Responsividad */
+          @media (max-width: 992px) {
+            .main-layout {
+              flex-direction: column !important;
+              gap: 0 !important;
+            }
+            .aside-panel {
+              width: 100% !important;
+              height: 350px !important;
+              position: relative !important;
+            }
+            .aside-content {
+              padding: 30px !important;
+              text-align: center;
+              align-items: center;
+            }
+            .aside-heading {
+              font-size: 24px !important;
+            }
+            .aside-body {
+              display: none; /* Ocultamos el texto largo en móvil para priorizar el formulario */
+            }
+            .aside-bottom-curve {
+              height: 80px !important;
+            }
+          }
+
+          @media (max-width: 768px) {
+            .row-2, .row-3 {
+              grid-template-columns: 1fr !important;
+              gap: 16px !important;
+            }
+            .card-container {
+              padding: 24px !important;
+            }
+            .header-inner {
+              padding: 0 10px !important;
+            }
+            .header-title {
+              font-size: 16px !important;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .card-header {
+              flex-direction: column;
+              text-align: center;
+              gap: 12px !important;
+            }
+            .card-title {
+              font-size: 20px !important;
+            }
+            .server-badge {
+              flex-direction: column;
+              text-align: center;
+            }
+          }
+        `}
+      </style>
+
       {/* ── Barra superior ── */}
       <header style={styles.header}>
-        <div style={styles.headerInner}>
-          {/* Logo SENA en texto (reemplaza con <img> si tienes el asset) */}
+        <div style={styles.headerInner} className="header-inner">
           <div style={styles.logoBox}>
-            <span style={styles.logoText}>SENA</span>
+            <img src={logoSena} alt="Logo SENA" style={styles.headerLogoImg} />
           </div>
+          <div style={styles.headerSeparator} />
           <div>
-            <div style={styles.headerTitle}>Registro de Usuario</div>
+            <div style={styles.headerTitle} className="header-title">Registro de Usuario</div>
             <div style={styles.headerSubtitle}>Sistema de Conexión Exitosa</div>
           </div>
         </div>
       </header>
 
       {/* ── Contenido principal ── */}
-      <main style={styles.main}>
-        {/* Panel izquierdo */}
-        <aside style={styles.aside}>
-          <div style={styles.asideLogoWrap}>
-            <div style={styles.asideLogo}>
-              <span style={styles.asideLogoText}>SENA</span>
+      <div style={styles.mainContainer}>
+        <main style={styles.main} className="main-layout">
+          {/* Panel izquierdo */}
+          <aside style={styles.aside} className="aside-panel">
+            <div style={styles.asideImageBackground}>
+              <img src={heroImage} alt="SENA Background" style={styles.asideImageFull} />
+              <div style={styles.asideOverlay} />
             </div>
-          </div>
-          <h2 style={styles.asideHeading}>
-            Formando talento{" "}
-            <span style={styles.asideGreen}>para el futuro</span>
-          </h2>
-          <p style={styles.asideBody}>
-            En el SENA conectamos el talento de los colombianos con las
-            oportunidades para transformar vidas y construir país.
-          </p>
-          <div style={styles.asideDivider} />
-        </aside>
-
-        {/* Tarjeta del formulario */}
-        <section style={styles.card}>
-          {/* Encabezado tarjeta */}
-          <div style={styles.cardHeader}>
-            <div style={styles.cardIcon}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-              </svg>
-            </div>
-            <div>
-              <h1 style={styles.cardTitle}>Registro de Usuario</h1>
-              <p style={styles.cardSubtitle}>
-                Complete todos los campos para registrarse en el sistema.
+            
+            <div style={styles.asideContent} className="aside-content">
+              <div style={styles.asideLogoContainer}>
+                <img src={logoSena} alt="Logo SENA" style={styles.asideLogoImg} />
+              </div>
+              <h2 style={styles.asideHeading} className="aside-heading">
+                Formando talento<br />
+                <span style={styles.asideGreen}>para el futuro</span>
+              </h2>
+              <p style={styles.asideBody} className="aside-body">
+                En el SENA conectamos el talento de los colombianos con las
+                oportunidades para transformar vidas y construir país.
               </p>
             </div>
-          </div>
-
-          <div style={styles.dividerLine} />
-
-          {/* Mensaje de error */}
-          {error && (
-            <div style={styles.errorBox}>
-              <span style={styles.errorIcon}>⊘</span>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* ── Sección: Información personal ── */}
-          <SectionTitle icon="" label="Información personal" />
-
-          <div style={styles.row2}>
-            <Field label="Documento de Identidad">
-              <input
-                style={styles.input}
-                name="documento"
-                value={formData.documento}
-                onChange={handleChange}
-                placeholder="Ej: 2284735264"
-              />
-            </Field>
-            <Field label="Nombre Completo">
-              <input
-                style={styles.input}
-                name="nombreCompleto"
-                value={formData.nombreCompleto}
-                onChange={handleChange}
-                placeholder="Nombre Completo"
-              />
-            </Field>
-          </div>
-
-          {/* ── Sección: Contacto ── */}
-          <SectionTitle icon="" label="Contacto" />
-
-          <div style={styles.row3}>
-            <Field label="Número de Teléfono">
-              <input
-                style={styles.input}
-                name="telefono"
-                value={formData.telefono}
-                onChange={handleChange}
-                placeholder="Ej: 3214567890"
-              />
-            </Field>
-            <Field label="Contacto de Emergencia">
-              <input
-                style={styles.input}
-                name="contactoEmergencia"
-                value={formData.contactoEmergencia}
-                onChange={handleChange}
-                placeholder="3213846303"
-              />
-            </Field>
-            <Field label="Correo Electrónico">
-              <input
-                style={styles.input}
-                name="correo"
-                type="email"
-                value={formData.correo}
-                onChange={handleChange}
-                placeholder="correo@gmail.com"
-              />
-            </Field>
-          </div>
-
-          {/* ── Sección: Formación ── */}
-          <SectionTitle icon="" label="Formación" />
-
-          <Field label="Programa de Formación">
-            <select
-              style={{ ...styles.input, ...styles.select }}
-              name="programa"
-              value={formData.programa}
-              onChange={handleChange}
-            >
-              <option value="">Seleccione un programa</option>
-              {programas.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          {/* ── Sección: Seguridad ── */}
-          <SectionTitle icon="" label="Seguridad" />
-
-          <Field label="Contraseña">
-            <div style={styles.passwordWrap}>
-              <input
-                style={{ ...styles.input, paddingRight: 44 }}
-                name="contrasena"
-                type={mostrarContrasena ? "text" : "password"}
-                value={formData.contrasena}
-                onChange={handleChange}
-                placeholder="••••••••••••••••"
-              />
-              <button
-                style={styles.eyeBtn}
-                type="button"
-                onClick={() => setMostrarContrasena(!mostrarContrasena)}
-                aria-label="Mostrar contraseña"
+            
+            <div style={styles.asideBottomCurveContainer} className="aside-bottom-curve">
+              <svg 
+                viewBox="0 0 500 200" 
+                preserveAspectRatio="none" 
+                style={styles.asideWaveSvg}
               >
-                {mostrarContrasena ? "👁" : "👁"}
-              </button>
+                <path 
+                  d="M0,100 C150,200 350,0 500,100 L500,200 L0,200 Z" 
+                  fill={SENA_GREEN} 
+                />
+              </svg>
             </div>
-          </Field>
+          </aside>
 
-          {/* Botón registrar */}
-          <button
-            style={styles.submitBtn}
-            onClick={handleSubmit}
-            disabled={cargando}
-          >
-            {cargando ? "Registrando..." : "Registrarse"}
-          </button>
+          {/* Tarjeta del formulario */}
+          <section style={styles.cardSection}>
+            <div style={styles.card} className="card-container">
+            <div style={styles.cardHeader} className="card-header">
+              <div style={styles.cardIcon}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
+              </div>
+              <div>
+                <h1 style={styles.cardTitle} className="card-title">Registro de Usuario</h1>
+                <p style={styles.cardSubtitle}>
+                  Complete todos los campos para registrarse en el sistema.
+                </p>
+              </div>
+            </div>
 
-          {/* Pie de tarjeta */}
-          <div style={styles.serverBadge}>
-            <span style={styles.serverCheck}>✔</span>
-            <span>
-              Servidor:{" "}
-              <span style={styles.serverGreen}>Conexión Exitosa</span>
-            </span>
-            <span style={styles.serverFront}>front-end</span>
-          </div>
-        </section>
-      </main>
+            <div style={styles.dividerLine} />
+
+            {/* Mensaje de error */}
+            {error && (
+              <div style={styles.errorBox}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* ── Sección: Foto de Perfil ── */}
+            <SectionTitle 
+              label="Foto de Perfil" 
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              } 
+            />
+
+            <div style={styles.photoSection}>
+              <label style={styles.photoUploadLabel} className="btn-hover">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleChange}
+                  style={{ display: 'none' }}
+                />
+                <div style={styles.photoPlaceholder}>
+                  {fotoPreview ? (
+                    <img src={fotoPreview} alt="Vista previa" style={styles.photoPreviewImg} />
+                  ) : (
+                    <div style={styles.photoPlaceholderContent}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={SENA_GREEN} strokeWidth="1.5">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      <span>Subir Foto</span>
+                    </div>
+                  )}
+                </div>
+              </label>
+              <p style={styles.photoHint}>Haga clic para seleccionar o cambiar su foto de perfil</p>
+            </div>
+
+            {/* ── Sección: Información personal ── */}
+            <SectionTitle 
+              label="Información personal" 
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <path d="M22 6l-10 7L2 6" />
+                </svg>
+              } 
+            />
+
+            <div style={styles.row2} className="row-2">
+              <Field label="Documento de Identidad">
+                <input
+                  className="input-focus input-hover"
+                  style={styles.input}
+                  name="documento"
+                  value={formData.documento}
+                  onChange={handleChange}
+                  placeholder="Ej:12345678901"
+                />
+              </Field>
+              <Field label="Nombre Completo">
+                <input
+                  className="input-focus input-hover"
+                  style={styles.input}
+                  name="nombreCompleto"
+                  value={formData.nombreCompleto}
+                  onChange={handleChange}
+                  placeholder="Nombre Completo"
+                />
+              </Field>
+            </div>
+
+            {/* ── Sección: Contacto ── */}
+            <SectionTitle 
+              label="Contacto" 
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              }
+            />
+
+            <div style={styles.row3} className="row-3">
+              <Field label="Número de Teléfono">
+                <input
+                  className="input-focus input-hover"
+                  style={styles.input}
+                  name="telefono"
+                  value={formData.telefono}
+                  onChange={handleChange}
+                  placeholder="Ej: 3561342178"
+                />
+              </Field>
+              <Field label="Contacto de Emergencia">
+                <input
+                  className="input-focus input-hover"
+                  style={styles.input}
+                  name="contactoEmergencia"
+                  value={formData.contactoEmergencia}
+                  onChange={handleChange}
+                  placeholder="Ej: 3473558638"
+                />
+              </Field>
+              <Field label="Correo Electrónico">
+                <input
+                  className="input-focus input-hover"
+                  style={styles.input}
+                  name="correo"
+                  type="email"
+                  value={formData.correo}
+                  onChange={handleChange}
+                  placeholder="Ejemplo@gmail.com"
+                />
+              </Field>
+            </div>
+
+            {/* ── Sección: Formación ── */}
+            <SectionTitle 
+              label="Formación" 
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                  <path d="M6 12v5c3 3 9 3 12 0v-5" />
+                </svg>
+              }
+            />
+
+            <Field label="Programa de Formación">
+              <select
+                className="input-focus input-hover"
+                style={{ ...styles.input, ...styles.select }}
+                name="programa"
+                value={formData.programa}
+                onChange={handleChange}
+              >
+                <option value="">Seleccione un Programa</option>
+                {programas.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {/* ── Sección: Seguridad ── */}
+            <SectionTitle 
+              label="Seguridad" 
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              }
+            />
+
+            <Field label="Contraseña">
+              <div style={styles.passwordWrap}>
+                <input
+                  className="input-focus input-hover"
+                  style={{ ...styles.input, paddingRight: 44 }}
+                  name="contrasena"
+                  type={mostrarContrasena ? "text" : "password"}
+                  value={formData.contrasena}
+                  onChange={handleChange}
+                  placeholder="••••••••••••••••"
+                />
+                <button
+                  style={styles.eyeBtn}
+                  type="button"
+                  onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                  aria-label="Mostrar contraseña"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </button>
+              </div>
+            </Field>
+
+            {/* Botón registrar */}
+            <button
+              className="btn-hover"
+              style={styles.submitBtn}
+              onClick={handleSubmit}
+              disabled={cargando}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white" style={{ marginRight: 8 }}>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="8.5" cy="7" r="4" />
+                <line x1="20" y1="8" x2="20" y2="14" />
+                <line x1="17" y1="11" x2="23" y2="11" />
+              </svg>
+              {cargando ? "Registrando..." : "Registrarse"}
+            </button>
+
+            {/* Pie de tarjeta - Éxito condicional */}
+            {exito && (
+              <div style={styles.serverBadge} className="server-badge">
+                <div style={styles.serverIconContainer}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SENA_GREEN} strokeWidth="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <span>
+                  Estado: <span style={styles.serverGreen}>Registrado exitosamente</span>
+                </span>
+                <span style={styles.serverFront}>front-end</span>
+              </div>
+)}
+            </div>
+          </section>
+        </main>
+      </div>
 
       {/* ── Footer ── */}
       <footer style={styles.footer}>
-        © 2024 SENA - Servicio Nacional de Aprendizaje &nbsp;|&nbsp; Conexión
-        Exitosa
+        © 2026 SENA - Servicio Nacional de Aprendizaje &nbsp;|&nbsp; Conexión Exitosa
       </footer>
     </div>
   );
@@ -268,10 +504,10 @@ export default function Registro() {
 
 /* ── Componentes auxiliares ── */
 
-function SectionTitle({ icon, label }: { icon: string; label: string }) {
+function SectionTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <div style={styles.sectionTitle}>
-      <span>{icon}</span>
+      <span style={styles.sectionIcon}>{icon}</span>
       <span style={styles.sectionLabel}>{label}</span>
     </div>
   );
@@ -294,43 +530,42 @@ function Field({
 
 /* ── Estilos ── */
 
-const GREEN = "#2e7d32";
-const GREEN_LIGHT = "#f1f8e9";
-const BORDER = "#e0e0e0";
-const TEXT_GRAY = "#555";
-
 const styles: Record<string, React.CSSProperties> = {
   pageWrapper: {
     minHeight: "100vh",
-    backgroundColor: "#f4f4f4",
-    fontFamily: "'Segoe UI', Arial, sans-serif",
+    backgroundColor: "#f9fafb",
+    fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif",
     display: "flex",
     flexDirection: "column",
   },
 
   /* Header */
   header: {
-    backgroundColor: GREEN,
-    padding: "12px 32px",
+    backgroundColor: SENA_GREEN,
+    padding: "16px 40px",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
   },
   headerInner: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
+    maxWidth: 1200,
+    margin: "0 auto",
+    width: "100%",
   },
   logoBox: {
-    width: 48,
-    height: 48,
-    borderRadius: "50%",
-    backgroundColor: "rgba(255,255,255,0.25)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    marginRight: 16,
   },
-  logoText: {
-    color: "white",
-    fontWeight: 700,
-    fontSize: 13,
+  headerLogoImg: {
+    width: 40,
+    height: 40,
+    objectFit: "contain",
+    filter: "brightness(0) invert(1)", // Hace el logo blanco para el header verde
+  },
+  headerSeparator: {
+    width: 1,
+    height: 32,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    marginRight: 16,
   },
   headerTitle: {
     color: "white",
@@ -338,158 +573,276 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 18,
   },
   headerSubtitle: {
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.9)",
     fontSize: 13,
+  },
+
+  /* Main container */
+  mainContainer: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 1400,
+    margin: "0 auto",
+    boxSizing: "border-box",
   },
 
   /* Main layout */
   main: {
-    flex: 1,
     display: "flex",
     gap: 0,
-    padding: "40px 32px",
-    maxWidth: 1200,
-    margin: "0 auto",
-    width: "100%",
-    boxSizing: "border-box",
+    alignItems: "stretch",
+    minHeight: "calc(100vh - 72px)", // Altura total menos el header
   },
 
   /* Aside */
   aside: {
-    width: 300,
-    minWidth: 260,
-    paddingRight: 40,
+    width: 450,
     flexShrink: 0,
-  },
-  asideLogoWrap: { marginBottom: 20 },
-  asideLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: "50%",
-    backgroundColor: GREEN,
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: "column",
+    backgroundColor: "white",
+    position: "relative",
+    overflow: "hidden",
   },
-  asideLogoText: { color: "white", fontWeight: 800, fontSize: 18 },
+  asideImageBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 0,
+  },
+  asideImageFull: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    objectPosition: "center",
+  },
+  asideOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0) 100%)",
+  },
+  asideContent: {
+    padding: "60px 50px",
+    position: "relative",
+    zIndex: 2,
+  },
+  asideLogoContainer: {
+    marginBottom: 30,
+  },
+  asideLogoImg: {
+    width: 100,
+    height: 100,
+    objectFit: "contain",
+  },
   asideHeading: {
-    fontSize: 26,
-    fontWeight: 700,
-    color: "#1a1a1a",
-    lineHeight: 1.3,
-    marginBottom: 12,
+    fontSize: 36,
+    fontWeight: 800,
+    color: "#1f2937",
+    lineHeight: 1.1,
+    marginBottom: 20,
+    textShadow: "0 2px 4px rgba(255,255,255,0.5)",
   },
-  asideGreen: { color: GREEN },
-  asideBody: { color: TEXT_GRAY, fontSize: 14, lineHeight: 1.6 },
-  asideDivider: {
-    marginTop: 20,
-    width: 40,
-    height: 3,
-    backgroundColor: GREEN,
-    borderRadius: 4,
+  asideGreen: { color: SENA_GREEN },
+  asideBody: { 
+    color: "#374151", 
+    fontSize: 16, 
+    lineHeight: 1.6,
+    maxWidth: "90%",
+    fontWeight: 500,
+    textShadow: "0 1px 2px rgba(255,255,255,0.5)",
+  },
+  asideBottomCurveContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: "100%",
+    height: 150,
+    zIndex: 1,
+    pointerEvents: "none",
+  },
+  asideWaveSvg: {
+    width: "100%",
+    height: "100%",
+    display: "block",
+  },
+
+  /* Card Container (Form section) */
+  cardSection: {
+    flex: 1,
+    padding: "40px 60px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    backgroundColor: "#f9fafb",
   },
 
   /* Card */
   card: {
-    flex: 1,
     backgroundColor: "white",
-    borderRadius: 16,
-    padding: "32px 36px",
-    boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
+    borderRadius: 20,
+    padding: "40px",
+    boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05)",
+    maxWidth: 800,
+    width: "100%",
+    alignSelf: "center",
   },
   cardHeader: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
-    marginBottom: 16,
+    gap: 20,
+    marginBottom: 20,
   },
   cardIcon: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: "50%",
-    backgroundColor: GREEN,
+    backgroundColor: SENA_GREEN,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   cardTitle: {
-    fontSize: 22,
-    fontWeight: 700,
-    color: "#1a1a1a",
+    fontSize: 24,
+    fontWeight: 800,
+    color: "#111827",
     margin: 0,
   },
   cardSubtitle: { color: TEXT_GRAY, fontSize: 14, margin: "4px 0 0" },
   dividerLine: {
     height: 1,
-    backgroundColor: BORDER,
-    margin: "16px 0",
+    backgroundColor: "#f3f4f6",
+    margin: "24px 0",
   },
 
   /* Error */
   errorBox: {
-    backgroundColor: "#fde8e8",
-    border: "1px solid #f5c6c6",
-    borderRadius: 8,
-    padding: "12px 16px",
-    color: "#c0392b",
+    backgroundColor: "#fef2f2",
+    border: "1px solid #fee2e2",
+    borderRadius: 12,
+    padding: "14px 20px",
+    color: "#991b1b",
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 24,
     fontSize: 14,
+    fontWeight: 500,
   },
-  errorIcon: { fontSize: 18 },
 
   /* Section title */
   sectionTitle: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
-    color: GREEN,
-    fontWeight: 600,
-    fontSize: 15,
-    margin: "24px 0 12px",
+    gap: 10,
+    margin: "24px 0 16px",
   },
-  sectionLabel: { color: GREEN },
+  sectionIcon: {
+    color: SENA_GREEN,
+    display: "flex",
+    alignItems: "center",
+  },
+  sectionLabel: { 
+    color: SENA_GREEN,
+    fontWeight: 700,
+    fontSize: 16,
+    letterSpacing: "-0.01em",
+  },
+
+  /* Photo Section */
+  photoSection: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 24,
+    width: "100%",
+  },
+  photoUploadLabel: {
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  },
+  photoPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: "50%",
+    border: `2px dashed ${SENA_GREEN}`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: SENA_GREEN_LIGHT,
+  },
+  photoPlaceholderContent: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 4,
+    color: SENA_GREEN,
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  photoPreviewImg: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  },
+  photoHint: {
+    fontSize: 13,
+    color: TEXT_GRAY,
+    margin: 0,
+  },
 
   /* Rows */
   row2: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: 16,
+    gap: 20,
+    width: "100%",
   },
   row3: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr 1fr",
-    gap: 16,
+    gap: 20,
+    width: "100%",
   },
 
   /* Field */
-  fieldWrap: { marginBottom: 0 },
+  fieldWrap: { 
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    width: "100%",
+    alignItems: "stretch",
+    marginBottom: 20, // Espaciado vertical consistente para campos individuales
+  },
   label: {
-    display: "block",
     fontSize: 13,
     color: TEXT_GRAY,
-    marginBottom: 6,
-    fontWeight: 500,
+    fontWeight: 600,
+    alignSelf: "flex-start",
   },
   input: {
     width: "100%",
-    padding: "10px 14px",
-    border: `1px solid ${BORDER}`,
-    borderRadius: 8,
+    padding: "12px 16px",
+    border: `1.5px solid ${BORDER_COLOR}`,
+    borderRadius: 10,
     fontSize: 14,
-    color: "#1a1a1a",
+    color: TEXT_DARK,
     outline: "none",
     boxSizing: "border-box",
-    transition: "border-color 0.2s",
+    transition: "all 0.2s ease",
     backgroundColor: "white",
   },
   select: {
     appearance: "none",
     backgroundImage:
-      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23555' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E\")",
+      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E\")",
     backgroundRepeat: "no-repeat",
     backgroundPosition: "right 14px center",
     paddingRight: 36,
@@ -497,59 +850,74 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   /* Password */
-  passwordWrap: { position: "relative" },
+  passwordWrap: { 
+    position: "relative",
+    width: "100%",
+  },
   eyeBtn: {
     position: "absolute",
-    right: 12,
+    right: 14,
     top: "50%",
     transform: "translateY(-50%)",
     background: "none",
     border: "none",
     cursor: "pointer",
-    fontSize: 18,
-    lineHeight: 1,
     padding: 0,
     color: TEXT_GRAY,
+    display: "flex",
+    alignItems: "center",
   },
 
   /* Submit */
   submitBtn: {
     width: "100%",
-    padding: "14px",
-    backgroundColor: GREEN,
+    padding: "16px",
+    backgroundColor: SENA_GREEN,
     color: "white",
     border: "none",
-    borderRadius: 8,
+    borderRadius: 12,
     fontSize: 16,
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: "pointer",
-    marginTop: 28,
-    transition: "background 0.2s",
+    marginTop: 40,
+    transition: "all 0.3s ease",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   /* Server badge */
   serverBadge: {
-    marginTop: 16,
-    backgroundColor: GREEN_LIGHT,
-    borderRadius: 8,
-    padding: "10px 16px",
+    marginTop: 24,
+    backgroundColor: SENA_GREEN_LIGHT,
+    borderRadius: 12,
+    padding: "14px 20px",
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    fontSize: 13,
-    color: TEXT_GRAY,
+    gap: 12,
+    fontSize: 14,
+    color: "#374151",
   },
-  serverCheck: { color: GREEN, fontSize: 16 },
-  serverGreen: { color: GREEN, fontWeight: 600 },
+  serverIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: "50%",
+    backgroundColor: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  serverGreen: { color: SENA_GREEN, fontWeight: 700 },
   serverFront: { color: TEXT_GRAY },
 
   /* Footer */
   footer: {
     textAlign: "center",
-    padding: "16px",
+    padding: "24px",
     fontSize: 13,
-    color: "#888",
-    borderTop: `1px solid ${BORDER}`,
+    color: TEXT_GRAY,
+    borderTop: `1px solid #f3f4f6`,
     backgroundColor: "white",
+    marginTop: "auto",
   },
 };
