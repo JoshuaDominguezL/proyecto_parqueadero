@@ -542,14 +542,12 @@ const styles: Record<string, React.CSSProperties> = {
   /* Header */
   header: {
     backgroundColor: SENA_GREEN,
-    padding: "16px 40px",
+    padding: "16px 50px",
     boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
   },
   headerInner: {
     display: "flex",
     alignItems: "center",
-    maxWidth: 1200,
-    margin: "0 auto",
     width: "100%",
   },
   logoBox: {
@@ -581,8 +579,8 @@ const styles: Record<string, React.CSSProperties> = {
   mainContainer: {
     flex: 1,
     width: "100%",
-    maxWidth: 1400,
-    margin: "0 auto",
+    maxWidth: "100%",
+    margin: "0",
     boxSizing: "border-box",
   },
 
@@ -591,12 +589,12 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     gap: 0,
     alignItems: "stretch",
-    minHeight: "calc(100vh - 72px)", // Altura total menos el header
+    minHeight: "calc(100vh - 72px)",
   },
 
   /* Aside */
   aside: {
-    width: 450,
+    width: "45%",
     flexShrink: 0,
     display: "flex",
     flexDirection: "column",
@@ -616,7 +614,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    objectPosition: "center",
+    objectPosition: "center", // Centrar la imagen
   },
   asideOverlay: {
     position: "absolute",
@@ -624,7 +622,7 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     width: "100%",
     height: "100%",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0) 100%)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 40%, rgba(255,255,255,0) 100%)",
   },
   asideContent: {
     padding: "60px 50px",
@@ -647,23 +645,21 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 20,
     textShadow: "0 2px 4px rgba(255,255,255,0.5)",
   },
-  asideGreen: { color: SENA_GREEN },
-  asideBody: { 
-    color: "#374151", 
-    fontSize: 16, 
-    lineHeight: 1.6,
-    maxWidth: "90%",
-    fontWeight: 500,
-    textShadow: "0 1px 2px rgba(255,255,255,0.5)",
+  asideGreen: {
+    color: SENA_GREEN,
+  },
+  asideBody: {
+    fontSize: 16,
+    color: "#4b5563",
+    lineHeight: 1.5,
+    maxWidth: 350,
   },
   asideBottomCurveContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
+    height: 100,
     width: "100%",
-    height: 150,
-    zIndex: 1,
-    pointerEvents: "none",
+    position: "relative",
+    zIndex: 2,
+    marginTop: "auto",
   },
   asideWaveSvg: {
     width: "100%",
@@ -674,28 +670,30 @@ const styles: Record<string, React.CSSProperties> = {
   /* Card Container (Form section) */
   cardSection: {
     flex: 1,
-    padding: "40px 60px",
     display: "flex",
-    flexDirection: "column",
+    alignItems: "center",
     justifyContent: "center",
+    padding: "40px",
     backgroundColor: "#f9fafb",
   },
 
   /* Card */
   card: {
     backgroundColor: "white",
-    borderRadius: 20,
-    padding: "40px",
-    boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05)",
-    maxWidth: 800,
     width: "100%",
-    alignSelf: "center",
+    maxWidth: 700,
+    borderRadius: 24,
+    boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
+    padding: "40px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "24px",
   },
   cardHeader: {
     display: "flex",
     alignItems: "center",
     gap: 20,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   cardIcon: {
     width: 56,
@@ -713,11 +711,15 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#111827",
     margin: 0,
   },
-  cardSubtitle: { color: TEXT_GRAY, fontSize: 14, margin: "4px 0 0" },
+  cardSubtitle: {
+    color: TEXT_GRAY,
+    fontSize: 14,
+    margin: "4px 0 0"
+  },
   dividerLine: {
     height: 1,
-    backgroundColor: "#f3f4f6",
-    margin: "24px 0",
+    backgroundColor: BORDER_COLOR,
+    margin: "8px 0",
   },
 
   /* Error */
@@ -740,18 +742,18 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    margin: "24px 0 16px",
+    marginTop: 10,
   },
   sectionIcon: {
     color: SENA_GREEN,
     display: "flex",
-    alignItems: "center",
   },
-  sectionLabel: { 
-    color: SENA_GREEN,
+  sectionLabel: {
+    fontSize: 14,
     fontWeight: 700,
-    fontSize: 16,
-    letterSpacing: "-0.01em",
+    color: TEXT_DARK,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   /* Photo Section */
@@ -760,16 +762,14 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     gap: 12,
-    marginBottom: 24,
-    width: "100%",
   },
   photoUploadLabel: {
     cursor: "pointer",
-    transition: "all 0.3s ease",
+    transition: "all 0.2s",
   },
   photoPlaceholder: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
     borderRadius: "50%",
     border: `2px dashed ${SENA_GREEN}`,
     display: "flex",
@@ -782,10 +782,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 4,
-    color: SENA_GREEN,
     fontSize: 12,
-    fontWeight: 600,
+    color: SENA_GREEN,
   },
   photoPreviewImg: {
     width: "100%",
@@ -795,48 +793,40 @@ const styles: Record<string, React.CSSProperties> = {
   photoHint: {
     fontSize: 13,
     color: TEXT_GRAY,
-    margin: 0,
   },
 
   /* Rows */
   row2: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: 20,
-    width: "100%",
+    gap: 24,
   },
   row3: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr 1fr",
-    gap: 20,
-    width: "100%",
+    gap: 24,
   },
 
-  /* Field */
-  fieldWrap: { 
+  fieldWrap: {
     display: "flex",
     flexDirection: "column",
     gap: 8,
-    width: "100%",
-    alignItems: "stretch",
-    marginBottom: 20, // Espaciado vertical consistente para campos individuales
+    flex: 1,
   },
   label: {
-    fontSize: 13,
-    color: TEXT_GRAY,
+    fontSize: 14,
     fontWeight: 600,
-    alignSelf: "flex-start",
+    color: TEXT_DARK,
   },
   input: {
     width: "100%",
-    padding: "12px 16px",
-    border: `1.5px solid ${BORDER_COLOR}`,
-    borderRadius: 10,
+    height: 48,
+    padding: "0 16px",
+    borderRadius: 12,
+    border: `1px solid ${BORDER_COLOR}`,
     fontSize: 14,
-    color: TEXT_DARK,
-    outline: "none",
+    transition: "all 0.2s",
     boxSizing: "border-box",
-    transition: "all 0.2s ease",
     backgroundColor: "white",
   },
   select: {
@@ -870,33 +860,32 @@ const styles: Record<string, React.CSSProperties> = {
 
   /* Submit */
   submitBtn: {
-    width: "100%",
-    padding: "16px",
     backgroundColor: SENA_GREEN,
     color: "white",
     border: "none",
     borderRadius: 12,
+    height: 56,
     fontSize: 16,
     fontWeight: 700,
     cursor: "pointer",
-    marginTop: 40,
-    transition: "all 0.3s ease",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 16,
+    transition: "all 0.2s",
+    width: "100%",
   },
 
   /* Server badge */
   serverBadge: {
     marginTop: 24,
-    backgroundColor: SENA_GREEN_LIGHT,
+    padding: "12px 20px",
+    backgroundColor: "#f3f4f6",
     borderRadius: 12,
-    padding: "14px 20px",
     display: "flex",
     alignItems: "center",
-    gap: 12,
     fontSize: 14,
-    color: "#374151",
+    gap: 10,
   },
   serverIconContainer: {
     width: 24,
