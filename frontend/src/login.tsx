@@ -1,306 +1,272 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from './api/axios';
 import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, Zap, Circle, LogIn } from 'lucide-react';
-import senaLogo from './assets/sena.registro.png';
+import { LogIn, ShieldCheck, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 
+/**
+ * Componente de Login Profesional.
+ * Implementa una interfaz moderna con Tailwind CSS y flujo de autenticación en dos pasos (Credenciales + OTP).
+ * FEATURE: Diseño responsivo, estados de carga y manejo de errores semántico.
+ */
 function Login() {
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     correo: '',
     contra: '',
   });
-  const [status, setStatus] = useState<string>('');
-  const [statusType, setStatusType] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  
+  const [mostrarOtp, setMostrarOtp] = useState<boolean>(false);
+  const [codigoOtp, setCodigoOtp] = useState<string>('');
+  const [status, setStatus] = useState<{ msg: string; tipo: 'error' | 'success' | 'info' | null }>({ msg: '', tipo: null });
+  const [loading, setLoading] = useState(false);
+
+  // 🔄 Redirección automática al detectar la sesión activa con validación estricta
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // REFACTOR: Uso de tipado estricto y normalización de datos
+      const perfil = user.usuario;
+      
+      if (!perfil) {
+        console.error('FIX: Estructura de perfil inválida en la sesión', { user });
+        return;
+      }
+
+      // NORMALIZACIÓN: Priorizamos 'idTipoUsr' (camelCase tras interceptor)
+      const idRol = parseInt(String(perfil.idTipoUsr || 0), 10);
+      
+      // Mapeo lógico manual basado en TipoUsuarioEnum
+      const rolNombre = idRol === 1 ? 'APRENDIZ' : (idRol === 2 ? 'ADMIN' : (idRol === 3 ? 'OPERATIVO' : ''));
+
+      console.log('Validando acceso para:', { rolNombre, idRol, perfil });
+
+      // Lógica de redirección basada en roles definidos
+      if (idRol === 2) {
+        navigate('/appadmin');
+      } else if (idRol === 3) {
+        navigate('/appperop');
+      } else if (idRol === 1) {
+        navigate('/app');
+      } else {
+        console.warn('SECURITY: Acceso denegado - Usuario sin rol válido', { idRol });
+        setStatus({ msg: 'Tu cuenta no tiene un rol asignado. Contacta al administrador.', tipo: 'error' });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus('Iniciando sesión...');
-    setStatusType('loading');
+    if (loading) return;
+    
+    setLoading(true);
+    setStatus({ msg: 'Iniciando sesión...', tipo: 'info' });
     try {
-      const response = await api.post('/usuarios/login', formData);
-      console.log('Login exitoso:', response.data);
-      login(response.data);
-      setStatus(`Bienvenido, ${response.data.nombreCompleto}`);
-      setStatusType('success');
-
-      const rol = response.data.idTipoUsr;
-      if (rol === 1) {
-        navigate('/app');
-      } else if (rol === 2) {
-        navigate('/appadmin');
-      } else if (rol === 3) {
-        navigate('/appperop');
-      } else {
-        navigate('/');
-      }
+      await api.post('/auth/login', formData);
+      setStatus({ msg: 'Código de verificación generado. ¡Búscalo en la terminal del backend!', tipo: 'success' });
+      setMostrarOtp(true);
     } catch (error: any) {
       console.error('Error en el login:', error);
-      setStatus(`${error.response?.data?.message || 'Credenciales incorrectas o error de servidor'}`);
-      setStatusType('error');
+      
+      // Manejo robusto de errores de red/CORS
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        setStatus({ msg: 'Error de conexión con el servidor. Verifica que el backend esté corriendo.', tipo: 'error' });
+      } else {
+        setStatus({ msg: `Error: ${error.response?.data?.message || 'Credenciales incorrectas'}`, tipo: 'error' });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    
+    setLoading(true);
+    setStatus({ msg: 'Verificando código...', tipo: 'info' });
+    try {
+      const response = await api.post('/auth/verificar-otp', {
+        correo: formData.correo,
+        codigo: codigoOtp
+      });
+      
+      // Validar que la respuesta sea exitosa y contenga datos
+      if (response.status === 200 && response.data) {
+        // NORMALIZACIÓN: El backend usa un ResponseInterceptor que envuelve la data en { success, data, ... }
+        const userData = response.data.data !== undefined ? response.data.data : response.data;
+        
+        setStatus({ msg: '¡Verificación exitosa! Redirigiendo...', tipo: 'success' });
+        
+        // Pequeña pausa para que el usuario vea el éxito antes de la redirección
+        setTimeout(() => {
+          login(userData);
+        }, 500);
+      } else {
+        throw new Error('Respuesta del servidor inválida');
+      }
+      
+    } catch (error: any) {
+      console.error('FIX: Error al verificar OTP:', error);
+      setStatus({ msg: `Error: ${error.message || 'Código incorrecto o expirado'}`, tipo: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReenviarOtp = async () => {
+    if (loading) return;
+    
+    setLoading(true);
+    setStatus({ msg: 'Reenviando código...', tipo: 'info' });
+    try {
+      await api.post('/auth/reenviar-otp', { correo: formData.correo });
+      setStatus({ msg: 'Nuevo código enviado. ¡Revisa tu correo!', tipo: 'success' });
+    } catch (error: any) {
+      console.error('Error al reenviar OTP:', error);
+      setStatus({ msg: `Error: ${error.response?.data?.message || 'No se pudo reenviar el código'}`, tipo: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen flex bg-[#f4f7f6] font-sans overflow-hidden">
+    <div className="min-h-screen bg-[#F4F7F6] flex items-center justify-center p-4 font-sans selection:bg-[#39A900]/20">
+      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl border border-black/5 shadow-xl relative overflow-hidden">
+        {/* Decoración de fondo */}
+        <div className="absolute -top-28 -right-24 w-56 h-56 bg-[#39A900]/18 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-28 -left-24 w-56 h-56 bg-[#007832]/10 rounded-full blur-3xl"></div>
 
-      {/* ── PANEL IZQUIERDO ── */}
-      <div className="hidden lg:flex lg:w-[45%] relative flex-col overflow-hidden">
-
-        {/* Imagen de fondo + superposición cinematográfica */}
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-1000"
-          style={{ backgroundImage: `url(${senaLogo})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80" />
-
-        {/* Contenido */}
-        <div className="relative z-10 flex flex-col h-full px-12 py-12">
-
-          {/* Logo / marca */}
-          <div className="flex items-center gap-4 mb-10">
-            <div className="w-12 h-12 flex items-center justify-center">
-              <img src="/logo.png" alt="SENA Logo" className="w-full h-full object-contain brightness-0 invert" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-white font-bold text-xs leading-tight tracking-wider">Servicio Nacional</span>
-              <span className="text-white/80 text-[10px] font-medium">de Aprendizaje</span>
-            </div>
+        <div className="text-center relative z-10">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-[#39A900] rounded-3xl shadow-xl shadow-[#39A900]/25 mb-6 group transition-transform hover:scale-105 duration-500">
+            {mostrarOtp ? (
+              <ShieldCheck className="w-10 h-10 text-white animate-pulse" />
+            ) : (
+              <LogIn className="w-10 h-10 text-white" />
+            )}
           </div>
-
-          {/* Texto principal */}
-          <div className="mb-14">
-            <h2 className="text-4xl font-black text-white leading-tight mb-4">
-              Bienvenido<br />
-              <span className="text-[#39a900]">nuevamente</span>
-            </h2>
-            <div className="w-12 h-1 bg-[#39a900] mb-4" />
-            <p className="text-white/90 text-base leading-relaxed max-w-sm">
-              Gestiona los datos de tu vehículo fácilmente.
-            </p>
-          </div>
-
-          {/* Tarjeta de características con Glassmorphism */}
-          <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md px-6 py-6 space-y-4 mb-auto max-w-md">
-            {[
-              { 
-                icon: <ShieldCheck size={20} className="text-[#39a900]" />, 
-                title: 'Acceso seguro',
-                desc: 'Protegemos tu información con seguridad.'
-              },
-              { 
-                icon: <Zap size={20} className="text-[#39a900]" />, 
-                title: 'Gestión de perfil',
-                desc: 'Actualiza la foto de tu vehículo, documentos y datos personales de forma rápida y fácil.'
-              },
-              { 
-                icon: <Circle size={14} className="fill-[#39a900] text-[#39a900]" />, 
-                title: 'Disponible 24/7',
-                desc: 'Accede a la plataforma en cualquier momento desde cualquier dispositivo.'
-              },
-            ].map(({ icon, title, desc }) => (
-              <div key={title} className="flex gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#39a900]/10 border border-[#39a900]/20 flex items-center justify-center shrink-0">
-                  {icon}
-                </div>
-                <div className="flex flex-col justify-center">
-                  <span className="text-white text-sm font-bold">{title}</span>
-                  <span className="text-white/70 text-[10px] leading-snug">{desc}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Onda inferior + Conexión Segura */}
-          <div className="relative mt-auto -mx-12 -mb-8 pt-8">
-            <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none">
-               <svg viewBox="0 0 500 150" preserveAspectRatio="none" className="h-24 w-full fill-[#39a900]/40">
-                <path d="M0,80 C150,150 350,0 500,80 L500,150 L0,150 Z"></path>
-              </svg>
-            </div>
-            <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none">
-               <svg viewBox="0 0 500 150" preserveAspectRatio="none" className="h-20 w-full fill-[#39a900]">
-                <path d="M0,100 C150,160 350,40 500,100 L500,150 L0,150 Z"></path>
-              </svg>
-            </div>
-            
-            <div className="relative z-20 px-12 pb-6 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-                <Lock size={16} className="text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-white font-bold text-xs">Conexión segura</span>
-                <span className="text-white/80 text-[10px]">Tu información está protegida.</span>
-              </div>
-            </div>
-          </div>
-
+          <h1 className="text-4xl font-black text-[#232323] tracking-tight">
+            {mostrarOtp ? 'Seguridad OTP' : 'Login - Sistema'}
+          </h1>
+          <p className="mt-2 text-[#232323]/70 font-semibold uppercase tracking-[0.2em] text-[10px]">
+            {mostrarOtp ? 'Verificación de Identidad' : 'Gestión de Parqueadero Institucional'}
+          </p>
         </div>
-      </div>
 
-      {/* ── PANEL DERECHO ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-12 py-6 bg-[#f4f7f6] relative overflow-hidden">
-        
-        {/* Tarjeta */}
-        <div className="w-full max-w-lg bg-white rounded-[40px] shadow-[0_30px_80px_rgba(0,0,0,0.08)] p-8 sm:p-12 relative z-10">
-
-          {/* Logo para móviles */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-14 h-14 flex items-center justify-center">
-              <img src="/logo.png" alt="SENA Logo" className="w-full h-full object-contain" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-gray-900 font-bold text-sm leading-tight">Servicio Nacional</span>
-              <span className="text-gray-500 text-xs font-medium">de Aprendizaje</span>
-            </div>
-          </div>
-
-          {/* Encabezado */}
-          <div className="flex flex-col items-center text-center mb-10">
-            <div className="w-20 h-20 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center mb-6 shadow-inner">
-              <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
-                <Lock size={24} className="text-[#39a900]" />
-              </div>
-            </div>
-            <h1 className="text-gray-900 text-3xl font-black tracking-tight mb-3">Iniciar sesión</h1>
-            <p className="text-gray-500 text-sm">Ingresa tus credenciales para acceder al sistema</p>
-          </div>
-
-          {/* Formulario */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-
-            {/* Correo */}
-            <div className="space-y-2">
-              <label htmlFor="correo" className="block text-sm font-semibold text-gray-700">
-                Correo electrónico
-              </label>
+        {!mostrarOtp ? (
+          <form onSubmit={handleSubmitLogin} className="mt-8 space-y-6 relative z-10">
+            <div className="space-y-4">
               <div className="relative group">
-                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#39a900] transition-colors duration-200" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black/45 group-focus-within:text-[#39A900] transition-colors" />
                 <input
-                  type="email"
-                  id="correo"
                   name="correo"
-                  onChange={handleChange}
+                  type="email"
                   required
-                  placeholder="ejemplo@correo.com"
-                  className="w-full h-14 pl-12 pr-4 rounded-2xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 text-sm
-                    focus:outline-none focus:border-[#39a900] transition-all duration-200"
+                  value={formData.correo}
+                  onChange={handleChange}
+                  className="w-full bg-white border border-black/10 text-[#232323] pl-12 pr-4 py-4 rounded-2xl focus:ring-2 focus:ring-[#39A900]/30 focus:border-[#39A900] transition-all outline-none placeholder:text-black/40"
+                  placeholder="Correo Electrónico"
                 />
               </div>
-            </div>
-
-            {/* Contraseña */}
-            <div className="space-y-2">
-              <label htmlFor="contra" className="block text-sm font-semibold text-gray-700">
-                Contraseña
-              </label>
               <div className="relative group">
-                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#39a900] transition-colors duration-200" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black/45 group-focus-within:text-[#39A900] transition-colors" />
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="contra"
                   name="contra"
-                  onChange={handleChange}
+                  type="password"
                   required
-                  placeholder="••••••••••••"
-                  className="w-full h-14 pl-12 pr-12 rounded-2xl bg-white border-2 border-gray-100 text-gray-900 placeholder-gray-400 text-sm
-                    focus:outline-none focus:border-[#39a900] transition-all duration-200"
+                  value={formData.contra}
+                  onChange={handleChange}
+                  className="w-full bg-white border border-black/10 text-[#232323] pl-12 pr-4 py-4 rounded-2xl focus:ring-2 focus:ring-[#39A900]/30 focus:border-[#39A900] transition-all outline-none placeholder:text-black/40"
+                  placeholder="Contraseña"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
             </div>
 
-            {/* Recordarme + Olvidaste contraseña */}
-            <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={() => setRememberMe(!rememberMe)}
-                    className="sr-only"
-                  />
-                  <div className={`w-5 h-5 rounded-md border-2 transition-all duration-200 flex items-center justify-center
-                    ${rememberMe ? 'bg-[#39a900] border-[#39a900]' : 'bg-white border-gray-200'}`}>
-                    {rememberMe && (
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4L4 7L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                </div>
-                <span className="text-gray-600 text-sm font-medium">Recordarme</span>
-              </label>
-              <a href="/recuperar" className="text-sm text-[#39a900] hover:underline transition-all duration-200 font-bold">
-                ¿Olvidaste tu contraseña?
+            <div className="flex items-center justify-between px-2">
+              <a href="/registro" className="text-xs font-bold text-[#39A900] hover:text-[#2f8f00] transition-colors uppercase tracking-widest">
+                ¿No tienes cuenta? Regístrate
               </a>
             </div>
 
-            {/* Banner de estado */}
-            {status && (
-              <div className={`rounded-2xl px-5 py-4 text-sm font-medium flex items-start gap-3 border transition-all duration-300
-                ${statusType === 'success' ? 'bg-green-50 border-green-100 text-[#39a900]' : ''}
-                ${statusType === 'error' ? 'bg-red-50 border-red-100 text-red-600' : ''}
-                ${statusType === 'loading' ? 'bg-gray-50 border-gray-100 text-gray-500' : ''}
-              `}>
-                <span className="mt-0.5 shrink-0">
-                  {statusType === 'loading' && (
-                    <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                  )}
-                  {statusType === 'success' && <ShieldCheck size={20} />}
-                  {statusType === 'error' && <span className="text-xl leading-none">⚠</span>}
-                </span>
-                <span className="leading-tight">{status}</span>
-              </div>
-            )}
-
-            {/* Botón de ingreso */}
             <button
               type="submit"
-              className="w-full h-14 rounded-2xl bg-[#39a900] hover:bg-[#328700] active:scale-[0.98]
-                text-white font-bold text-base shadow-lg shadow-[#39a900]/20
-                transition-all duration-200 flex items-center justify-center gap-3 mt-4"
+              disabled={loading}
+              className="w-full bg-[#39A900] hover:bg-[#2f8f00] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-[#39A900]/25 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              <LogIn size={20} />
-              Ingresar
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Ingresar al Sistema'}
+              {!loading && <ArrowRight className="w-4 h-4" />}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmitOtp} className="mt-8 space-y-6 relative z-10">
+            <div className="text-center space-y-4">
+              <p className="text-sm text-[#232323]/70">
+                Hemos enviado un código a tu terminal. Por favor ingrésalo para continuar.
+              </p>
+              <input
+                type="text"
+                maxLength={6}
+                required
+                value={codigoOtp}
+                onChange={(e) => setCodigoOtp(e.target.value)}
+                className="w-full bg-white border border-black/10 text-[#232323] py-5 rounded-2xl focus:ring-2 focus:ring-[#39A900]/30 focus:border-[#39A900] text-center text-3xl font-black tracking-[0.5em] transition-all outline-none placeholder:text-black/15"
+                placeholder="000000"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#39A900] hover:bg-[#2f8f00] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-[#39A900]/25 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirmar Identidad'}
             </button>
 
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleReenviarOtp}
+                className="w-full text-[#39A900] hover:text-[#2f8f00] font-bold text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50 py-2"
+              >
+                {loading ? 'Procesando...' : '¿No recibiste el código? Reenviar'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarOtp(false);
+                  setStatus({ msg: '', tipo: null });
+                }}
+                className="w-full text-black/45 hover:text-black/70 font-bold text-[10px] uppercase tracking-widest transition-colors"
+              >
+                Volver al Login
+              </button>
+            </div>
           </form>
+        )}
 
-          {/* Tarjeta de pie de página */}
-          <div className="mt-10 flex flex-col items-center gap-4">
-             <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-               <ShieldCheck size={14} className="text-[#39a900]" />
-             </div>
-             <div className="text-center">
-               <p className="text-gray-500 text-xs font-medium">Servicio Nacional de Aprendizaje SENA</p>
-               <p className="text-gray-400 text-[10px]">Plataforma académica para la gestión de parqueaderos</p>
-             </div>
+        {status.msg && (
+          <div className={`mt-6 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all animate-in fade-in slide-in-from-top-2 ${
+            status.tipo === 'error' ? 'bg-red-500/10 border-red-500/40 text-red-600' : 
+            status.tipo === 'success' ? 'bg-[#39A900]/10 border-[#39A900]/35 text-[#2f8f00]' :
+            'bg-[#39A900]/10 border-[#39A900]/35 text-[#2f8f00]'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-1.5 h-1.5 rounded-full ${
+                status.tipo === 'error' ? 'bg-red-600 animate-pulse' : 
+                status.tipo === 'success' ? 'bg-[#39A900]' : 'bg-[#39A900] animate-spin'
+              }`}></div>
+              {status.msg}
+            </div>
           </div>
-
-        </div>
+        )}
       </div>
     </div>
   );

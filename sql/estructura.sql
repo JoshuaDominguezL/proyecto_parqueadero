@@ -1,4 +1,17 @@
+
+
 CREATE DATABASE parqueadero;
+
+CREATE TYPE jornadas AS ENUM (
+    'MAÑANA',
+    'TARDE',
+    'NOCHE'
+);
+
+CREATE TYPE estado_mov AS ENUM (
+    'ADENTRO',
+    'SALIDA'
+);
 
 CREATE TABLE tipo_bahia (
     idTipoB SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -18,17 +31,6 @@ CREATE TABLE tipo_vehiculo (
 CREATE TABLE tipo_usuario (
     idTipoUsr SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     tipoUsr VARCHAR(20) UNIQUE NOT NULL
-);
-
-CREATE TYPE jornadas AS ENUM (
-    'MAÑANA',
-    'TARDE',
-    'NOCHE'
-);
-
-CREATE TYPE estado_mov AS ENUM (
-    'ADENTRO',
-    'SALIDA'
 );
 
 CREATE TABLE formacion (
@@ -127,3 +129,20 @@ CREATE TABLE movimiento_vehiculo (
     ON DELETE RESTRICT
     ON UPDATE CASCADE
 );
+
+CREATE TABLE codigo_otp (
+    idOtp INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    documento VARCHAR(10) NOT NULL,
+    codigo VARCHAR(6) NOT NULL,
+    expiraEn TIMESTAMP NOT NULL,
+    intentos SMALLINT NOT NULL DEFAULT 0,
+    usado BOOLEAN NOT NULL DEFAULT FALSE,
+    creadoEn TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (documento)
+    REFERENCES usuario(documento)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_otp_documento ON codigo_otp(documento);
