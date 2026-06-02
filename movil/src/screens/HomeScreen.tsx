@@ -15,6 +15,7 @@ import Barcode from 'react-native-barcode-qr-generator'; // RF8: render de Code1
 import QRCode from 'react-native-qrcode-svg'; // RF8: render QR para compatibilidad futura (conmutación).
 import { useAuth } from '../context/AuthContext'; // RF7: fuente de sesión y perfil del aprendiz.
 import { apiRequest } from '../services/api'; // RF16/RF25: cliente HTTP tipado con auth y manejo de sesión inválida.
+import AvatarIniciales from '../components/AvatarIniciales';
 
 type ModoVisualizacion = 'BARRAS' | 'QR'; // RF8: modos explícitos para conmutación dual.
 
@@ -51,7 +52,7 @@ const COLORS = { // UI: paleta oficial SENA exigida por requerimiento.
   borde: 'rgba(15, 23, 42, 0.10)', // UI: borde sutil para tarjetas (premium).
   sombra: 'rgba(15, 23, 42, 0.14)', // UI: sombra suave para iOS.
 }; // UI: constantes centralizadas para consistencia visual.
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
 export default function HomeScreen({ navigation }: { navigation: any }) { // UX: navegación del Drawer sin romper integración existente.
   const { usuario } = useAuth(); // RF7: obtiene perfil autenticado del aprendiz desde contexto de sesión.
 
@@ -70,15 +71,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) { // UX:
 
   const animSwitch = useRef(new Animated.Value(1)).current; // UX: controla fade/scale al alternar BARRAS/QR (evita layout thrashing).
   const animPulse = useRef(new Animated.Value(0)).current; // UX: pulse sutil para dar vida a la UI sin distraer.
-
-  const initiales = useMemo(() => { // RF7: avatar minimalista basado en iniciales (sin exponer PII extra).
-    const nombre = String(usuario?.nombreCompleto ?? '').trim(); // RF7: toma nombre completo del perfil.
-    if (!nombre) return 'S'; // RF7: fallback institucional si falta nombre.
-    const partes = nombre.split(/\s+/).filter(Boolean); // RF7: separa palabras para iniciales.
-    const primera = partes[0]?.[0] ?? 'S'; // RF7: inicial 1.
-    const segunda = partes.length > 1 ? (partes[1]?.[0] ?? '') : ''; // RF7: inicial 2 si existe.
-    return `${primera}${segunda}`.toUpperCase(); // RF7: normaliza a mayúsculas.
-  }, [usuario?.nombreCompleto]); // UX: recalcula solo si cambia el nombre.
 
   const documentoSanitizado = useMemo(() => { // RNF2/RF7: máscara defensiva de documento para privacidad.
     const doc = String(usuario?.documento ?? '').trim(); // RNF2: obtiene documento sin asumir formato.
@@ -261,7 +253,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) { // UX:
 
           <View style={styles.headerRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initiales}</Text>
+              <AvatarIniciales
+                nombre={usuario.nombreCompleto}
+                fotoUrl={usuario.fotoPersona}
+                size={56}
+              />
             </View>
 
             <View style={styles.headerTextBlock}>

@@ -1,13 +1,27 @@
-const CLOUDINARY_CLOUD_NAME =
-  process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim();
+function getCloudinaryConfig() {
+  const cloudName = String(
+    process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME ??
+      process.env.CLOUDINARY_CLOUD_NAME ??
+      ''
+  ).trim();
 
-const CLOUDINARY_UPLOAD_PRESET =
-  process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET?.trim();
+  const uploadPreset = String(
+    process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET ??
+      process.env.CLOUDINARY_UPLOAD_PRESET ??
+      ''
+  ).trim();
 
-if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-  throw new Error(
-    'Faltan variables de Cloudinary en el .env'
-  );
+  const missing: string[] = [];
+  if (!cloudName) missing.push('EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME');
+  if (!uploadPreset) missing.push('EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET');
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Faltan variables de Cloudinary en el .env: ${missing.join(', ')}`
+    );
+  }
+
+  return { cloudName, uploadPreset };
 }
 
 /**
@@ -18,6 +32,9 @@ if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
 export async function subirImagen(
   localUri: string
 ): Promise<string> {
+  const { cloudName, uploadPreset } =
+    getCloudinaryConfig();
+
   const debugUpload =
     __DEV__ &&
     String(process.env.EXPO_PUBLIC_DEBUG_UPLOAD ?? '') === '1';
@@ -43,14 +60,14 @@ export async function subirImagen(
 
   formData.append(
     'upload_preset',
-    CLOUDINARY_UPLOAD_PRESET
+    uploadPreset
   );
 
   let response: Response;
 
   try {
     response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
       {
         method: 'POST',
         headers: {

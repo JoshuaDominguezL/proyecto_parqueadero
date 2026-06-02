@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Usuario } from './entities/usuario.entity';
+import { Formacion } from './entities/formacion.entity';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { CreateUsuarioAdminDto } from './dto/create-usuario-admin.dto';
 import { ActualizarPerfilDto } from './dto/actualizar-perfil.dto';
@@ -35,6 +36,8 @@ export class UsuarioService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
+    @InjectRepository(Formacion)
+    private readonly formacionRepository: Repository<Formacion>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly mailService: MailService,
     private readonly authService: AuthService,
@@ -54,6 +57,20 @@ export class UsuarioService {
     )
       ? createUsuarioDto.idTipoUsr
       : TipoUsuarioEnum.APRENDIZ;
+
+    const idFormacion =
+      'idFormacion' in createUsuarioDto
+        ? String((createUsuarioDto as any).idFormacion ?? '').trim()
+        : '';
+
+    if (idFormacion.length > 0) {
+      const existeFormacion = await this.formacionRepository.findOne({
+        where: { ficha: idFormacion },
+      });
+      if (!existeFormacion) {
+        throw new BadRequestException('La ficha de formación proporcionada no existe.');
+      }
+    }
 
     const existente = await this.usuarioRepository.findOne({
       where: [{ documento }, { correo: correoNormalizado }],
@@ -93,7 +110,11 @@ export class UsuarioService {
       return usuarioSinContrasena;
     } catch (error) {
       const pgError = error as { code?: string; constraint?: string };
-      if (pgError.code === '23503' && pgError.constraint === 'usuario_idformacion_fkey') {
+      if (
+        pgError.code === '23503' &&
+        (pgError.constraint === 'usuario_idformacion_fkey' ||
+          pgError.constraint === 'FK_206e2b87e297bd2a296d769e713')
+      ) {
         throw new BadRequestException('La ficha de formación proporcionada no es válida.');
       }
       throw error;

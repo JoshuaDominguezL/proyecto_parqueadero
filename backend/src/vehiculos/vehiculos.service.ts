@@ -4,6 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,7 +26,9 @@ import { AuditoriaService } from '../auditoria/auditoria.service';
  * REFACTOR: Implementa limpieza de recursos multimedia y auditoría integrada.
  */
 @Injectable()
-export class VehiculosService {
+export class VehiculosService implements OnModuleInit {
+  private readonly logger = new Logger(VehiculosService.name);
+
   constructor(
     @InjectRepository(Vehiculo)
     private readonly vehiculoRepository: Repository<Vehiculo>,
@@ -37,6 +41,34 @@ export class VehiculosService {
     private readonly cloudinaryService: CloudinaryService,
     private readonly auditoriaService: AuditoriaService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      await this.ensureTiposVehiculo();
+    } catch (error: any) {
+      this.logger.error('Seeding de tipos de vehículo falló (omitido).', error?.stack || String(error));
+    }
+  }
+
+  private async ensureTiposVehiculo() {
+    const seeds = ['Carro', 'Moto', 'Bicicleta', 'Camioneta'];
+    for (const tipo of seeds) {
+      const existing = await this.tipoVehiculoRepository.findOne({
+        where: { tipoVehiculo: tipo },
+        withDeleted: true,
+      });
+
+      if (existing) {
+        if (existing.deletedAt) {
+          await this.tipoVehiculoRepository.restore({ idTipoV: existing.idTipoV });
+        }
+        continue;
+      }
+
+      const created = this.tipoVehiculoRepository.create({ tipoVehiculo: tipo });
+      await this.tipoVehiculoRepository.save(created);
+    }
+  }
 
   /**
    * Registra un vehículo y lo vincula al usuario.

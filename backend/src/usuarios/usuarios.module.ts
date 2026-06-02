@@ -5,6 +5,8 @@ import { UsuariosController } from './usuarios.controller';
 import { UsuariosAdminController } from './usuarios-admin.controller';
 import { AdminUsuariosController } from './admin-usuarios.controller';
 import { Usuario } from './entities/usuario.entity';
+import { Formacion } from './entities/formacion.entity';
+import { TipoUsuario } from './entities/tipo-usuario.entity';
 import { AdminSeedService } from './admin-seed.service';
 import { MailModule } from '../mail/mail.module';
 import { VehiculosModule } from '../vehiculos/vehiculos.module';
@@ -13,7 +15,7 @@ import { AuditoriaModule } from '../auditoria/auditoria.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario]),
+    TypeOrmModule.forFeature([Usuario, TipoUsuario, Formacion]),
     MailModule,
     forwardRef(() => VehiculosModule),
     AuthModule,

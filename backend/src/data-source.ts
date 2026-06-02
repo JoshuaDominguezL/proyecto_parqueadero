@@ -8,16 +8,24 @@ dotenv.config({
   path: path.resolve(__dirname, '..', '.env'),
 });
 
+const requiredEnv = (key: string) => {
+  const value = process.env[key];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`Missing environment variable: ${key}`);
+  }
+  return value;
+};
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  username: process.env.DB_USERNAME || 'postgres',
-  password: String(process.env.DB_PASSWORD || ''),
-  database: process.env.DB_NAME || 'parqueadero',
+  host: requiredEnv('DB_HOST'),
+  port: parseInt(requiredEnv('DB_PORT'), 10),
+  username: requiredEnv('DB_USERNAME'),
+  password: requiredEnv('DB_PASSWORD'),
+  database: requiredEnv('DB_NAME'),
   entities: [path.join(__dirname, '/**/*.entity{.ts,.js}')],
   migrations: [path.join(__dirname, '/migrations/*{.ts,.js}')],
-  synchronize: false,
+  synchronize: true,
   logging: process.env.NODE_ENV === 'development',
   migrationsRun: false,
   migrationsTableName: 'migrations_history',

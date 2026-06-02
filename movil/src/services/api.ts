@@ -1,8 +1,9 @@
 import { sessionService } from './sessionService';
 import axios, { type AxiosRequestConfig } from 'axios';
-import { NativeModules } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 const RAW_API_URL = process.env.EXPO_PUBLIC_API_URL?.trim();
+const RAW_API_PORT = process.env.EXPO_PUBLIC_API_PORT?.trim();
 
 const stripTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 const ensureApiPrefix = (baseUrl: string) => {
@@ -27,10 +28,17 @@ const debuggerHost = (() => {
   return null;
 })();
 
-const localhostIp = extractIpFromDebuggerHost(debuggerHost) || '192.168.101.84';
+const localhostIp =
+  extractIpFromDebuggerHost(debuggerHost) ||
+  (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
+
+const apiPort = (() => {
+  const raw = String(RAW_API_PORT ?? '').trim();
+  return raw.length ? raw : '3001';
+})();
 
 const API_BASE_URL = ensureApiPrefix(
-  RAW_API_URL || `http://${localhostIp}:3000/api/v1`,
+  RAW_API_URL || `http://${localhostIp}:${apiPort}/api/v1`,
 );
 
 export { API_BASE_URL };

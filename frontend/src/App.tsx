@@ -18,6 +18,12 @@ import { ConfiguracionAdminPage } from './pages/admin/ConfiguracionAdminPage';
 import { VisitantesPage } from './pages/admin/VisitantesPage';
 import { InformesPage } from './pages/admin/InformesPage';
 import { GraficosPage } from './pages/admin/GraficosPage';
+import { OperativoLayout } from './layouts/OperativoLayout';
+import { ControlAccesoView } from './pages/operativo/ControlAccesoView';
+import { EstadoBahiasView } from './pages/operativo/EstadoBahiasView';
+import { MovimientosView } from './pages/operativo/MovimientosView';
+import { AlertasView } from './pages/operativo/AlertasView';
+import { ConfiguracionView } from './pages/operativo/ConfiguracionView';
 import { UserRole } from './constants/enums';
 
 class AppErrorBoundary extends React.Component<
@@ -129,7 +135,7 @@ function PanelAprendiz() {
   const { logout } = useAuth();
   return (
     <div className="p-20 text-center space-y-10">
-      <h1 className="text-6xl font-black text-gray-900">🚲 Panel Aprendiz</h1>
+      <h1 className="text-6xl font-black text-gray-900"> Panel Aprendiz</h1>
       <p className="text-gray-500 text-xl font-medium">Gestión de Movilidad Personal en Construcción</p>
       <div className="flex justify-center gap-6">
         <Link to="/" className="px-10 py-4 bg-gray-100 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">Volver</Link>
@@ -175,7 +181,15 @@ function App() {
                 element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><Navigate to="/appadmin/configuracion" replace /></ProtectedRoute>}
               />
 
-              <Route path="/appperop" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIVO]}><OperativoDashboard /></ProtectedRoute>} />
+              {/* Rutas Operativo con Layout */}
+              <Route path="/appperop" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIVO]}><OperativoLayout /></ProtectedRoute>}>
+                <Route index element={<ControlAccesoView />} />
+                <Route path="bahias" element={<EstadoBahiasView />} />
+                <Route path="movimientos" element={<MovimientosView />} />
+                <Route path="alertas" element={<AlertasView />} />
+                <Route path="configuracion" element={<ConfiguracionView />} />
+              </Route>
+
               <Route path="/app" element={<ProtectedRoute allowedRoles={[UserRole.APRENDIZ]}><PanelAprendiz /></ProtectedRoute>} />
 
               <Route path="*" element={<Navigate to="/" replace />} />

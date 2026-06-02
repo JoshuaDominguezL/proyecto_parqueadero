@@ -1,272 +1,222 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import api from './api/axios';
 import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, ShieldCheck, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  LogIn
+} from 'lucide-react';
+import senaLogo from './assets/sena.registro.png';
 
-/**
- * Componente de Login Profesional.
- * Implementa una interfaz moderna con Tailwind CSS y flujo de autenticación en dos pasos (Credenciales + OTP).
- * FEATURE: Diseño responsivo, estados de carga y manejo de errores semántico.
- */
 function Login() {
-  const { login, isAuthenticated, user } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     correo: '',
     contra: '',
   });
-  
-  const [mostrarOtp, setMostrarOtp] = useState<boolean>(false);
-  const [codigoOtp, setCodigoOtp] = useState<string>('');
-  const [status, setStatus] = useState<{ msg: string; tipo: 'error' | 'success' | 'info' | null }>({ msg: '', tipo: null });
+
+  const [codigoOtp, setCodigoOtp] = useState('');
+  const [mostrarOtp, setMostrarOtp] = useState(false);
+
+  const [status, setStatus] = useState('');
+  const [statusType, setStatusType] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // 🔄 Redirección automática al detectar la sesión activa con validación estricta
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      // REFACTOR: Uso de tipado estricto y normalización de datos
-      const perfil = user.usuario;
-      
-      if (!perfil) {
-        console.error('FIX: Estructura de perfil inválida en la sesión', { user });
-        return;
-      }
-
-      // NORMALIZACIÓN: Priorizamos 'idTipoUsr' (camelCase tras interceptor)
-      const idRol = parseInt(String(perfil.idTipoUsr || 0), 10);
-      
-      // Mapeo lógico manual basado en TipoUsuarioEnum
-      const rolNombre = idRol === 1 ? 'APRENDIZ' : (idRol === 2 ? 'ADMIN' : (idRol === 3 ? 'OPERATIVO' : ''));
-
-      console.log('Validando acceso para:', { rolNombre, idRol, perfil });
-
-      // Lógica de redirección basada en roles definidos
-      if (idRol === 2) {
-        navigate('/appadmin');
-      } else if (idRol === 3) {
-        navigate('/appperop');
-      } else if (idRol === 1) {
-        navigate('/app');
-      } else {
-        console.warn('SECURITY: Acceso denegado - Usuario sin rol válido', { idRol });
-        setStatus({ msg: 'Tu cuenta no tiene un rol asignado. Contacta al administrador.', tipo: 'error' });
-      }
-    }
-  }, [isAuthenticated, user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
+  // ─────────────────────────────
+  // 1. LOGIN (envía credenciales)
+  // ─────────────────────────────
   const handleSubmitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
-    
+
     setLoading(true);
-    setStatus({ msg: 'Iniciando sesión...', tipo: 'info' });
+    setStatus('Iniciando sesión...');
+    setStatusType('loading');
+
     try {
       await api.post('/auth/login', formData);
-      setStatus({ msg: 'Código de verificación generado. ¡Búscalo en la terminal del backend!', tipo: 'success' });
+
+      setStatus('Código OTP enviado. Revisa tu correo o terminal.');
+      setStatusType('success');
       setMostrarOtp(true);
+
     } catch (error: any) {
-      console.error('Error en el login:', error);
-      
-      // Manejo robusto de errores de red/CORS
-      if (error.code === 'ERR_NETWORK' || !error.response) {
-        setStatus({ msg: 'Error de conexión con el servidor. Verifica que el backend esté corriendo.', tipo: 'error' });
-      } else {
-        setStatus({ msg: `Error: ${error.response?.data?.message || 'Credenciales incorrectas'}`, tipo: 'error' });
-      }
+      setStatus(error.response?.data?.message || 'Credenciales incorrectas');
+      setStatusType('error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmitOtp = async (e: React.FormEvent) => {
+  // ─────────────────────────────
+  // 2. OTP
+  // ─────────────────────────────
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
-    
+
     setLoading(true);
-    setStatus({ msg: 'Verificando código...', tipo: 'info' });
+    setStatus('Verificando código...');
+    setStatusType('loading');
+
     try {
       const response = await api.post('/auth/verificar-otp', {
         correo: formData.correo,
         codigo: codigoOtp
       });
-      
-      // Validar que la respuesta sea exitosa y contenga datos
-      if (response.status === 200 && response.data) {
-        // NORMALIZACIÓN: El backend usa un ResponseInterceptor que envuelve la data en { success, data, ... }
-        const userData = response.data.data !== undefined ? response.data.data : response.data;
-        
-        setStatus({ msg: '¡Verificación exitosa! Redirigiendo...', tipo: 'success' });
-        
-        // Pequeña pausa para que el usuario vea el éxito antes de la redirección
-        setTimeout(() => {
-          login(userData);
-        }, 500);
-      } else {
-        throw new Error('Respuesta del servidor inválida');
-      }
-      
+
+      const userData = response.data.data ?? response.data;
+
+      login(userData);
+
+      setStatus('Acceso autorizado');
+      setStatusType('success');
+
+      const rol = userData?.usuario?.idTipoUsr;
+
+      if (rol === 2) navigate('/appadmin');
+      else if (rol === 3) navigate('/appperop');
+      else navigate('/app');
+
     } catch (error: any) {
-      console.error('FIX: Error al verificar OTP:', error);
-      setStatus({ msg: `Error: ${error.message || 'Código incorrecto o expirado'}`, tipo: 'error' });
+      setStatus(error.response?.data?.message || 'Código inválido');
+      setStatusType('error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReenviarOtp = async () => {
-    if (loading) return;
-    
-    setLoading(true);
-    setStatus({ msg: 'Reenviando código...', tipo: 'info' });
-    try {
-      await api.post('/auth/reenviar-otp', { correo: formData.correo });
-      setStatus({ msg: 'Nuevo código enviado. ¡Revisa tu correo!', tipo: 'success' });
-    } catch (error: any) {
-      console.error('Error al reenviar OTP:', error);
-      setStatus({ msg: `Error: ${error.response?.data?.message || 'No se pudo reenviar el código'}`, tipo: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ─────────────────────────────
+  // UI
+  // ─────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F4F7F6] flex items-center justify-center p-4 font-sans selection:bg-[#39A900]/20">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl border border-black/5 shadow-xl relative overflow-hidden">
-        {/* Decoración de fondo */}
-        <div className="absolute -top-28 -right-24 w-56 h-56 bg-[#39A900]/18 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-28 -left-24 w-56 h-56 bg-[#007832]/10 rounded-full blur-3xl"></div>
+    <div className="h-screen flex bg-[#f4f7f6] font-sans overflow-hidden">
 
-        <div className="text-center relative z-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-[#39A900] rounded-3xl shadow-xl shadow-[#39A900]/25 mb-6 group transition-transform hover:scale-105 duration-500">
-            {mostrarOtp ? (
-              <ShieldCheck className="w-10 h-10 text-white animate-pulse" />
-            ) : (
-              <LogIn className="w-10 h-10 text-white" />
-            )}
-          </div>
-          <h1 className="text-4xl font-black text-[#232323] tracking-tight">
-            {mostrarOtp ? 'Seguridad OTP' : 'Login - Sistema'}
+      {/* ───────── PANEL IZQUIERDO ───────── */}
+      <div className="hidden lg:flex lg:w-[45%] relative flex-col overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${senaLogo})` }}
+        />
+        <div className="absolute inset-0 bg-black/60" />
+
+        <div className="relative z-10 p-12 text-white">
+          <h1 className="text-4xl font-black">
+            Sistema de <span className="text-[#39a900]">Parqueadero</span>
           </h1>
-          <p className="mt-2 text-[#232323]/70 font-semibold uppercase tracking-[0.2em] text-[10px]">
-            {mostrarOtp ? 'Verificación de Identidad' : 'Gestión de Parqueadero Institucional'}
+          <p className="mt-4 text-white/80 text-sm">
+            Acceso institucional seguro SENA
           </p>
         </div>
+      </div>
 
-        {!mostrarOtp ? (
-          <form onSubmit={handleSubmitLogin} className="mt-8 space-y-6 relative z-10">
-            <div className="space-y-4">
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black/45 group-focus-within:text-[#39A900] transition-colors" />
+      {/* ───────── PANEL DERECHO ───────── */}
+      <div className="flex-1 flex items-center justify-center p-6">
+
+        <div className="w-full max-w-lg bg-white rounded-[40px] shadow-xl p-10">
+
+          {/* HEADER */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 mx-auto bg-[#39a900]/10 rounded-full flex items-center justify-center mb-4">
+              {mostrarOtp ? <ShieldCheck className="text-[#39a900]" /> : <LogIn className="text-[#39a900]" />}
+            </div>
+
+            <h1 className="text-2xl font-black">
+              {mostrarOtp ? 'Verificación OTP' : 'Iniciar sesión'}
+            </h1>
+          </div>
+
+          {/* ───────── LOGIN ───────── */}
+          {!mostrarOtp ? (
+            <form onSubmit={handleSubmitLogin} className="space-y-5">
+
+              <input
+                type="email"
+                name="correo"
+                placeholder="Correo"
+                onChange={handleChange}
+                className="w-full p-4 rounded-2xl border"
+              />
+
+              <div className="relative">
                 <input
-                  name="correo"
-                  type="email"
-                  required
-                  value={formData.correo}
-                  onChange={handleChange}
-                  className="w-full bg-white border border-black/10 text-[#232323] pl-12 pr-4 py-4 rounded-2xl focus:ring-2 focus:ring-[#39A900]/30 focus:border-[#39A900] transition-all outline-none placeholder:text-black/40"
-                  placeholder="Correo Electrónico"
-                />
-              </div>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-black/45 group-focus-within:text-[#39A900] transition-colors" />
-                <input
+                  type={showPassword ? 'text' : 'password'}
                   name="contra"
-                  type="password"
-                  required
-                  value={formData.contra}
-                  onChange={handleChange}
-                  className="w-full bg-white border border-black/10 text-[#232323] pl-12 pr-4 py-4 rounded-2xl focus:ring-2 focus:ring-[#39A900]/30 focus:border-[#39A900] transition-all outline-none placeholder:text-black/40"
                   placeholder="Contraseña"
+                  onChange={handleChange}
+                  className="w-full p-4 rounded-2xl border pr-12"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2"
+                >
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </button>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between px-2">
-              <a href="/registro" className="text-xs font-bold text-[#39A900] hover:text-[#2f8f00] transition-colors uppercase tracking-widest">
-                ¿No tienes cuenta? Regístrate
-              </a>
-            </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#39a900] text-white p-4 rounded-2xl font-bold"
+              >
+                {loading ? 'Cargando...' : 'Ingresar'}
+              </button>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#39A900] hover:bg-[#2f8f00] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-[#39A900]/25 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Ingresar al Sistema'}
-              {!loading && <ArrowRight className="w-4 h-4" />}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmitOtp} className="mt-8 space-y-6 relative z-10">
-            <div className="text-center space-y-4">
-              <p className="text-sm text-[#232323]/70">
-                Hemos enviado un código a tu terminal. Por favor ingrésalo para continuar.
-              </p>
+            </form>
+          ) : (
+            /* ───────── OTP ───────── */
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+
               <input
                 type="text"
                 maxLength={6}
-                required
                 value={codigoOtp}
                 onChange={(e) => setCodigoOtp(e.target.value)}
-                className="w-full bg-white border border-black/10 text-[#232323] py-5 rounded-2xl focus:ring-2 focus:ring-[#39A900]/30 focus:border-[#39A900] text-center text-3xl font-black tracking-[0.5em] transition-all outline-none placeholder:text-black/15"
-                placeholder="000000"
+                placeholder="Código OTP"
+                className="w-full p-4 text-center text-xl tracking-[10px] border rounded-2xl"
               />
-            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#39A900] hover:bg-[#2f8f00] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-[#39A900]/25 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirmar Identidad'}
-            </button>
-
-            <div className="flex flex-col gap-3">
               <button
-                type="button"
+                type="submit"
                 disabled={loading}
-                onClick={handleReenviarOtp}
-                className="w-full text-[#39A900] hover:text-[#2f8f00] font-bold text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50 py-2"
+                className="w-full bg-[#39a900] text-white p-4 rounded-2xl font-bold"
               >
-                {loading ? 'Procesando...' : '¿No recibiste el código? Reenviar'}
+                Verificar
               </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  setMostrarOtp(false);
-                  setStatus({ msg: '', tipo: null });
-                }}
-                className="w-full text-black/45 hover:text-black/70 font-bold text-[10px] uppercase tracking-widest transition-colors"
+                onClick={() => setMostrarOtp(false)}
+                className="w-full text-sm text-gray-500"
               >
-                Volver al Login
+                Volver
               </button>
-            </div>
-          </form>
-        )}
 
-        {status.msg && (
-          <div className={`mt-6 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all animate-in fade-in slide-in-from-top-2 ${
-            status.tipo === 'error' ? 'bg-red-500/10 border-red-500/40 text-red-600' : 
-            status.tipo === 'success' ? 'bg-[#39A900]/10 border-[#39A900]/35 text-[#2f8f00]' :
-            'bg-[#39A900]/10 border-[#39A900]/35 text-[#2f8f00]'
-          }`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-1.5 h-1.5 rounded-full ${
-                status.tipo === 'error' ? 'bg-red-600 animate-pulse' : 
-                status.tipo === 'success' ? 'bg-[#39A900]' : 'bg-[#39A900] animate-spin'
-              }`}></div>
-              {status.msg}
+            </form>
+          )}
+
+          {/* STATUS */}
+          {status && (
+            <div className="mt-6 text-center text-sm text-gray-600">
+              {status}
             </div>
-          </div>
-        )}
+          )}
+
+        </div>
       </div>
     </div>
   );

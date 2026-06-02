@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as os from 'os';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, VersioningType, Logger, ClassSerializerInterceptor } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -6,6 +9,22 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+
+dotenv.config({
+  path: path.resolve(__dirname, '../.env'),
+});
+
+function getLocalIpv4() {
+  const interfaces = os.networkInterfaces();
+  for (const iface of Object.values(interfaces)) {
+    for (const addr of iface ?? []) {
+      if (addr.family === 'IPv4' && !addr.internal) {
+        return addr.address;
+      }
+    }
+  }
+  return null;
+}
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -124,7 +143,8 @@ async function bootstrap() {
     }
     throw error;
   }
-  logger.log(`Servidor corriendo en red local. Accesible en http://192.168.101.84:${port}`);
+  const hostIp = String(process.env.HOST_IP ?? '').trim() || getLocalIpv4() || 'localhost';
+  logger.log(`Servidor corriendo en red local. Accesible en http://${hostIp}:${port}`);
 }
 bootstrap().catch((error) => {
   const logger = new Logger('Bootstrap');

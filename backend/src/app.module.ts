@@ -106,24 +106,19 @@ function validateEnv(config: Record<string, unknown>) {
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const dbHost = String(configService.get<string>('DB_HOST') ?? '').trim();
-        const dbName = String(configService.get<string>('DB_NAME') ?? '').trim();
-
-        const isLocalDb =
-          dbName === 'parqueadero' &&
-          (dbHost === 'localhost' || dbHost === '127.0.0.1');
-
-        const syncEnv = configService.get<string>('TYPEORM_SYNCHRONIZE');
-        const synchronize = typeof syncEnv === 'string' ? syncEnv === 'true' : isLocalDb;
+        const host = configService.getOrThrow<string>('DB_HOST');
+        const port = parseInt(configService.get<string>('DB_PORT') ?? '5432', 10);
+        const username = configService.getOrThrow<string>('DB_USERNAME');
+        const password = configService.getOrThrow<string>('DB_PASSWORD');
+        const database = configService.getOrThrow<string>('DB_NAME');
 
         return {
           type: 'postgres',
-          url: configService.get<string>('DATABASE_URL'),
-          host: configService.get<string>('DB_HOST'),
-          port: parseInt(configService.get<string>('DB_PORT') ?? '5432', 10),
-          username: configService.get<string>('DB_USERNAME'),
-          password: String(configService.get<string>('DB_PASSWORD') ?? ''),
-          database: configService.get<string>('DB_NAME'),
+          host,
+          port,
+          username,
+          password,
+          database,
 
           entities: [
             __dirname + '/**/*.entity{.ts,.js}',
@@ -134,7 +129,7 @@ function validateEnv(config: Record<string, unknown>) {
             __dirname + '/migrations/*{.ts,.js}',
           ],
 
-          synchronize,
+          synchronize: true,
           migrationsRun: false,
           namingStrategy: new SnakeNamingStrategy(),
         };
