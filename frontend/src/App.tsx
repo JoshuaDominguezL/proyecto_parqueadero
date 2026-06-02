@@ -130,7 +130,7 @@ function Saludo() {
   );
 }
 
-// 🚲 MÓDULO 1: Panel - Aprendiz
+// MÓDULO 1: Panel - Aprendiz
 function PanelAprendiz() { 
   const { logout } = useAuth();
   return (
