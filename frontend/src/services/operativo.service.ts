@@ -46,6 +46,11 @@ export const operativoService = {
     const response = await api.get('/operativo/resumen-turno');
     return (response.data && response.data.data) ? response.data.data : response.data;
   },
+
+  getHistorial: async (page = 1, limit = 20) => {
+    const response = await api.get('/dashboard/historial', { params: { page, limit } });
+    return response.data;
+  },
 };
 
 export const dashboardService = {
@@ -68,6 +73,10 @@ export const dashboardService = {
   getHeatmap: async () => {
     const response = await api.get('/dashboard/heatmap');
     return response.data.data;
+  },
+  getTotalUsuarios: async () => {
+    const response = await api.get('/usuarios', { params: { limit: 1 } });
+    return response.data.meta?.total || 0;
   }
 };
 

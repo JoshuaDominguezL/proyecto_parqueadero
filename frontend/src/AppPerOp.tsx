@@ -7,7 +7,7 @@ const AppPerOp: React.FC = () => {
   return (
     <div style={{ padding: '20px', textAlign: 'center' }}>
       <h1>Panel de Personal Operativo</h1>
-      <p>Bienvenido, {user?.nombreCompleto}</p>
+      <p>Bienvenido, {user?.usuario?.nombreCompleto}</p>
       <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginTop: '20px', backgroundColor: '#f9f9f9' }}>
         <h3>Control de Operaciones</h3>
         <p>Aquí puedes registrar entradas, salidas y movimientos de vehículos.</p>

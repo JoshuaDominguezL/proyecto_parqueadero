@@ -7,7 +7,7 @@ const AppAdmin: React.FC = () => {
   return (
     <div style={{ padding: '20px', textAlign: 'center' }}>
       <h1>Panel de Administrador</h1>
-      <p>Bienvenido, {user?.nombreCompleto}</p>
+      <p>Bienvenido, {user?.usuario?.nombreCompleto}</p>
       <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
         <h3>Gestión Administrativa</h3>
         <p>Aquí puedes gestionar usuarios, bahías y reportes.</p>

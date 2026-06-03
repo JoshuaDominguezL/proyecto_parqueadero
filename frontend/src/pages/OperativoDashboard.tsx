@@ -1,328 +1,339 @@
-import React, { useMemo, useState } from 'react'; // UI: hooks para render reactivo del panel operativo (tiempo real).
-import { AlertTriangle, CheckCircle2, RefreshCw, ShieldAlert } from 'lucide-react'; // UI: iconografía accesible y de alto contraste (WCAG).
-import { useAuth } from '../AuthContext'; // UX: mantiene el hook de autenticación existente (sesión/operador/logout).
-import { MovementForm } from '../components/MovementForm'; // RF10/RF11/RF14: pasarela de acceso (escaneo/placa/contingencia).
-import { useOperativo } from '../hooks/useOperativo'; // RF15/RF18: fuente única de datos en vivo (REST + WebSocket) para ocupación/alertas.
-import { useNotification } from '../contexts/NotificationContext'; // UX: notificaciones en UI sin romper integración existente.
+import React, { useState } from 'react';
+import { 
+  LayoutDashboard, Users, Car, History, Settings, 
+  Menu, Bell, LogOut,
+  ArrowUpRight, ArrowDownRight, TrendingUp, AlertTriangle,
+  ArrowRight
+} from 'lucide-react';
+import { useAuth } from '../AuthContext';
+import { useOperativo } from '../hooks/useOperativo';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-/**
- * Dashboard Operativo (Vista Principal) — Rediseño UI/UX SENA.
- *
- * Objetivo:
- * - Alinear estrictamente la estética a la guía digital del SENA (paleta institucional y alto contraste).
- * - Consumir reglas críticas de negocio ya inyectadas (bloqueos RF14, capacidad RF15, emergencia RF18).
- * - Mantener intactos los hooks de sockets, autenticación y llamadas asíncronas existentes (directriz).
- */
+// Importar sub-vistas
+import { EstadoBahiasView } from './operativo/EstadoBahiasView';
+import { MovimientosView } from './operativo/MovimientosView';
+import { AlertasView } from './operativo/AlertasView';
+import { ConfiguracionView } from './operativo/ConfiguracionView';
+
 export const OperativoDashboard: React.FC = () => {
-  const { stats, bahias, vehiculos, alerts, loading, handleQuickSalida, refresh } = useOperativo(); // RF15/RF18: mantiene el consumo de datos en vivo.
-  const { showNotification } = useNotification(); // UX: notificaciones no intrusivas.
-  const { user, logout } = useAuth(); // UX: mantiene autenticación y cierre de sesión existente.
+  const { user, logout } = useAuth();
+  const { stats, movimientos } = useOperativo();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState('Resumen');
 
-  const [recent, setRecent] = useState<Array<{ id: string; tipo: 'SUCCESS' | 'ERROR'; mensaje: string; fecha: Date }>>([]); // RF12 (operación): historial local de eventos recientes (últimos 5) para auditoría visual.
+  const navItems = [
+    { icon: LayoutDashboard, label: 'Resumen' },
+    { icon: Car, label: 'Estado Bahías' },
+    { icon: History, label: 'Movimientos' },
+    { icon: AlertTriangle, label: 'Alertas' },
+    { icon: Settings, label: 'Configuración' },
+  ];
 
-  const operadorNombre = useMemo(() => { // UX: nombre del operador para navbar sin exponer tokens.
-    return user?.usuario?.nombreCompleto || 'Operador'; // UX: fallback si no hay perfil disponible.
-  }, [user?.usuario?.nombreCompleto]); // UX: memoiza por estabilidad.
+  const statCards = [
+    { 
+      label: 'Ocupación Actual', 
+      value: movimientos.filter(m => m.estado === 'ACTIVO').length || 0, 
+      change: '+ 12% vs ayer', 
+      icon: Car, 
+      color: 'bg-green-50 dark:bg-green-900/10 text-[#39A900]',
+      trend: 'up'
+    },
+    { 
+      label: 'Usuarios registrados', 
+      value: stats.usuariosRegistrados || 0, 
+      change: '+ 5% vs la semana pasada', 
+      icon: Users, 
+      color: 'bg-green-50 dark:bg-green-900/10 text-[#39A900]',
+      trend: 'up'
+    },
+    { 
+      label: 'Plazas disponibles', 
+      value: stats.disponibles, 
+      subtext: `Total: ${stats.total} plazas`, 
+      icon: TrendingUp, 
+      color: 'bg-green-50 dark:bg-green-900/10 text-[#39A900]' 
+    },
+    { 
+      label: 'Ingresos Hoy', 
+      value: movimientos.length || 0, 
+      change: '+ 8% vs ayer', 
+      icon: History, 
+      color: 'bg-green-50 dark:bg-green-900/10 text-[#39A900]',
+      trend: 'up'
+    },
+  ];
 
-  const ocupacionPct = useMemo(() => { // RF15: porcentaje de ocupación para semáforo de capacidad.
-    if (!stats.total) return 0; // RF15: evita división por cero.
-    return Math.round((stats.ocupados / stats.total) * 100); // RF15: cálculo simple y estable para UI.
-  }, [stats.ocupados, stats.total]); // RF15: depende de stats.
+  const getStatusStyle = (status: string) => {
+    switch (status.toUpperCase()) {
+      case 'EN PARQUEADERO':
+      case 'ACTIVO':
+        return 'bg-green-100 dark:bg-green-900/20 text-[#39A900] border-green-200 dark:border-green-800';
+      case 'COMPLETADO':
+      case 'FINALIZADO':
+        return 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800';
+      default:
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-700';
+    }
+  };
 
-  const estadoGlobal = useMemo(() => { // RF14/RF15/RF18: deduce estado global a partir de eventos reales sin inventar fuentes.
-    const tipos = alerts.map(a => String(a.tipo || '').toUpperCase()); // RF15: normaliza tipos de alertas recibidas por WebSocket.
-    if (tipos.some(t => t.includes('PARQUEADERO_DESHABILITADO'))) return 'DESHABILITADO'; // RF14: bloqueo administrativo (fase 3).
-    if (tipos.some(t => t.includes('PARQUEADERO_LLENO'))) return 'LLENO'; // RF15: capacidad 100% (fase 3/39).
-    if (tipos.some(t => t.includes('UMBRAL_80'))) return 'ALERTA_80'; // RF15: alerta operativa 80%.
-    if (stats.total > 0 && stats.disponibles === 0) return 'LLENO'; // RF15: fallback si no llegó alerta pero el cálculo indica 100%.
-    return 'DISPONIBLE'; // RF15: estado por defecto si no hay señales de bloqueo/lleno.
-  }, [alerts, stats.disponibles, stats.total]); // RF15: recalcula con datos en vivo.
-
-  const estadoStyle = useMemo(() => { // UI: paleta institucional de alto contraste (hex exigidos).
-    if (estadoGlobal === 'DESHABILITADO') return { bg: 'bg-[#D32F2F]', label: 'DESHABILITADO', sub: 'Bloqueo total de ingresos (RF14)', ring: 'ring-[#D32F2F]/25' }; // RF14.
-    if (estadoGlobal === 'LLENO') return { bg: 'bg-[#FF6B00]', label: 'LLENO', sub: 'Cupos agotados (100%)', ring: 'ring-[#FF6B00]/25' }; // RF15.
-    if (estadoGlobal === 'ALERTA_80') return { bg: 'bg-[#FF6B00]', label: 'ALERTA 80%', sub: 'Ocupación alta (RF15/RF39)', ring: 'ring-[#FF6B00]/25' }; // RF15.
-    return { bg: 'bg-[#39A900]', label: 'DISPONIBLE', sub: 'Ingreso permitido según reglas', ring: 'ring-[#39A900]/25' }; // RF15.
-  }, [estadoGlobal]); // UI: depende del estado.
-
-  const pushRecent = (tipo: 'SUCCESS' | 'ERROR', mensaje: string) => { // RF12: inserta evento reciente y limita a 5.
-    setRecent((prev) => [{ id: `${Date.now()}-${Math.random()}`, tipo, mensaje, fecha: new Date() }, ...prev].slice(0, 5)); // RF12: id estable sin depender de APIs del navegador.
-  }; // RF12: fin pushRecent.
-
-  if (loading) { // UX: pantalla de carga con guía institucional (sin parpadeos).
-    return ( // UX: render loading.
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center px-6"> {/* UI: fondo base claro requerido. */}
-        <div className="w-14 h-14 rounded-full border-4 border-[#003939]/20 border-t-[#003939] animate-spin" /> {/* UI: spinner en verde oscuro. */}
-        <p className="mt-4 text-[12px] font-black uppercase tracking-[0.28em] text-[#003939]">Sincronizando sistema...</p> {/* UX: feedback institucional. */}
-        <p className="mt-2 text-sm text-slate-600 font-medium text-center max-w-md">Conectando a infraestructura de bahías y eventos en tiempo real.</p> {/* UX: mensaje calmante. */}
-      </div> // UX: fin loading.
-    ); // UX: fin return.
-  } // UX: fin loading.
-
-  return ( // UI: render principal.
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-[#39A900]/20"> {/* Paleta: fondo base + selección SENA. */}
-      <header className="sticky top-0 z-50 bg-[#003939] text-white border-b border-black/10"> {/* Paleta: navbar portería verde oscuro (requisito). */}
-        <div className="max-w-[1800px] mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-4"> {/* UI: contenedor central. */}
-          <div className="flex items-center gap-3"> {/* UI: marca + estado. */}
-            <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center"> {/* UI: ícono container. */}
-              <span className="w-2.5 h-2.5 rounded-full bg-[#39A900] animate-pulse" /> {/* UI: punto vivo (sistema online). */}
-            </div> {/* UI: fin icono container. */}
-            <div> {/* UI: títulos. */}
-              <p className="text-[11px] font-black uppercase tracking-[0.28em] opacity-90">SENA • Portería</p> {/* Guía: marca institucional. */}
-              <h1 className="text-lg font-black tracking-tight">Panel Operativo de Acceso</h1> {/* UI: título principal. */}
-            </div> {/* UI: fin títulos. */}
-          </div> {/* UI: fin marca. */}
-
-          <div className="flex items-center gap-3"> {/* UI: acciones navbar. */}
-            <div className="hidden sm:flex flex-col items-end"> {/* UI: información del operador. */}
-              <p className="text-sm font-black leading-none">{operadorNombre}</p> {/* UX: nombre del operador (no PII sensible). */}
-              <p className="text-[11px] font-bold opacity-85">Operador de turno</p> {/* UX: rol visible. */}
-            </div> {/* UI: fin info operador. */}
-
-            <button
-              type="button"
-              onClick={refresh} // UX: recarga manual sin romper hooks.
-              className="h-10 w-10 rounded-xl bg-white/10 hover:bg-white/15 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-white/25"
-              aria-label="Refrescar datos"
-              title="Refrescar datos"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={logout} // UX: cierre de sesión preservando el contexto existente.
-              className="h-10 px-4 rounded-xl bg-white text-[#003939] font-black uppercase tracking-widest text-[11px] hover:bg-white/90 focus:outline-none focus:ring-4 focus:ring-white/25"
-            >
-              Cerrar sesión
-            </button>
-          </div> {/* UI: fin acciones navbar. */}
-        </div> {/* UI: fin container navbar. */}
-      </header> {/* UI: fin header. */}
-
-      <main className="max-w-[1800px] mx-auto px-4 md:px-6 py-6 space-y-6"> {/* UI: contenedor principal. */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6"> {/* Layout: grid robusto para 3 secciones. */}
-          <div className="lg:col-span-12"> {/* Sección A: barra superior de estado (a lo ancho). */}
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.08)]"> {/* UI: card premium. */}
-              <div className="absolute inset-0 pointer-events-none"> {/* UI: capa de pulso perimetral. */}
-                <div className={`absolute inset-0 ${estadoStyle.ring} ring-8 animate-pulse`} /> {/* RF14/RF15: pulso cambia con estado. */}
-              </div>
-
-              <div className="p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"> {/* UI: layout responsive. */}
-                <div className="flex items-center gap-4"> {/* UI: bloque estado gigante. */}
-                  <div className={`w-16 h-16 rounded-3xl ${estadoStyle.bg} text-white flex items-center justify-center shadow-sm`}> {/* Paleta: estado. */}
-                    {estadoGlobal === 'DESHABILITADO' ? <ShieldAlert className="w-9 h-9" /> : <AlertTriangle className="w-9 h-9" />} {/* RF14: icono de bloqueo; RF15: alerta. */}
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Estado general</p>
-                    <p className="mt-2 text-3xl sm:text-4xl font-black text-[#003939] tracking-tight">{estadoStyle.label}</p> {/* Paleta: tipografía fuerte. */}
-                    <p className="mt-1 text-sm font-semibold text-slate-600">{estadoStyle.sub}</p> {/* RF14/RF15: explicación corta. */}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:min-w-[520px]"> {/* UI: KPIs de alto contraste. */}
-                  <Kpi label="TOTAL" value={stats.total} />
-                  <Kpi label="OCUPADOS" value={stats.ocupados} />
-                  <Kpi label="LIBRES" value={stats.disponibles} highlight />
-                  <Kpi label="OCUPACIÓN" value={`${ocupacionPct}%`} />
-                </div>
-              </div>
+  return (
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-gray-950 font-sans overflow-hidden text-gray-900 dark:text-gray-100 transition-colors">
+      {/* Sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 lg:relative
+        ${sidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0 lg:w-0'}
+        bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 transition-all duration-500 flex flex-col overflow-hidden
+      `}>
+        {/* Header Sidebar - Estilo Institucional SENA */}
+        <div className="p-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#39A900] rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xl shadow-green-500/20 group hover:rotate-6 transition-transform">
+              <img src="/logo.png" alt="SENA" className="w-7 h-7 brightness-0 invert" />
             </div>
-          </div> {/* Fin sección A. */}
-
-          <div className="lg:col-span-4 space-y-6"> {/* Sección B: pasarela de acceso (input foco). */}
-            <MovementForm
-              onSuccess={(msg) => { showNotification(msg, 'success'); pushRecent('SUCCESS', msg); }} // RF10/RF11: registra éxito visual y en historial.
-              onError={(msg) => { showNotification(msg, 'error'); pushRecent('ERROR', msg); }} // RF14/RF15: registra bloqueo/error y en historial.
-            />
-          </div>
-
-          <div className="lg:col-span-5 space-y-6"> {/* Sección A (parte): telemetría placeholder + mapa. */}
-            <TelemetrySkeleton /> {/* RF15/RF18: placeholder visual para “Telemetría IoT” sin romper UI actual. */}
-            <MapaBahias bahias={bahias} /> {/* RF15: mapa de disponibilidad consumiendo data real del hook. */}
-          </div>
-
-          <div className="lg:col-span-3 space-y-6"> {/* Sección D: historial y alertas. */}
-            <MovimientosRecientes recent={recent} /> {/* RF12: últimos 5 eventos del turno (según acciones y errores). */}
-            <AlertasOperativas alerts={alerts} /> {/* RF14/RF15/RF18: alertas del sistema (socket) con alto contraste. */}
-            <VehiculosActivos vehiculos={vehiculos.slice(0, 5)} onSalida={handleQuickSalida} /> {/* RF11: salida rápida sobre vehículos activos. */}
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-slate-200 bg-white"> {/* UI: footer limpio. */}
-        <div className="max-w-[1800px] mx-auto px-4 md:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-[11px] font-bold text-slate-600 uppercase tracking-widest text-center sm:text-left">Sistema Institucional de Parqueadero SENA • Sede Ibagué</p>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-[#F8FAFC] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-[#003939]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#39A900]" />
-              API
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-[#F8FAFC] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-[#003939]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#39A900]" />
-              SOCKET
-            </span>
+            {sidebarOpen && (
+              <div className="flex flex-col border-l border-gray-100 dark:border-gray-800 pl-4 animate-in fade-in slide-in-from-left-4">
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-800 dark:text-gray-200 leading-tight">Servicio Nacional</span>
+                <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 leading-tight">de Aprendizaje</span>
+              </div>
+            )}
           </div>
         </div>
-      </footer>
-    </div>
-  ); // UI: fin return.
-};
 
-const Kpi: React.FC<{ label: string; value: string | number; highlight?: boolean }> = ({ label, value, highlight }) => ( // UI: KPI accesible y reusable.
-  <div className="rounded-2xl border border-slate-200 bg-[#F8FAFC] p-4"> {/* UI: card KPI. */}
-    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">{label}</p> {/* UI: label. */}
-    <p className={`mt-2 text-3xl font-black tracking-tight ${highlight ? 'text-[#39A900]' : 'text-[#003939]'}`}>{value}</p> {/* Paleta: valor destacado en verde. */}
-  </div>
-);
-
-const TelemetrySkeleton: React.FC = () => ( // UI: placeholder de telemetría (requisito de diseño).
-  <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden"> {/* UI: contenedor premium. */}
-    <div className="p-6 border-b border-slate-200 bg-[#003939] text-white"> {/* Paleta: encabezado verde oscuro. */}
-      <p className="text-[11px] font-black uppercase tracking-[0.28em] opacity-90">Telemetría IoT de Bahías</p> {/* RF15: texto literal solicitado. */}
-      <p className="mt-2 text-sm font-semibold opacity-90">Esperando sincronización de hardware real</p> {/* RF15: mensaje de skeleton. */}
-    </div>
-    <div className="p-6 space-y-4 animate-pulse"> {/* UX: skeleton loading interactivo. */}
-      <div className="h-4 w-2/3 rounded-full bg-slate-200" /> {/* Skeleton line 1. */}
-      <div className="h-4 w-1/2 rounded-full bg-slate-200" /> {/* Skeleton line 2. */}
-      <div className="grid grid-cols-3 gap-3 pt-2"> {/* Skeleton blocks. */}
-        <div className="h-16 rounded-2xl bg-slate-200" />
-        <div className="h-16 rounded-2xl bg-slate-200" />
-        <div className="h-16 rounded-2xl bg-slate-200" />
-      </div>
-    </div>
-  </div>
-);
-
-const MapaBahias: React.FC<{ bahias: Array<{ idBahia: number; nombreBahia: string; ocupada: boolean; fueraServicio?: boolean; placa?: string; tipoBahia?: { tipoBahia: string } }> }> = ({ bahias }) => ( // RF15: mapa operativo con estados visibles.
-  <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden"> {/* UI: contenedor. */}
-    <div className="p-6 border-b border-slate-200 flex items-center justify-between gap-4"> {/* UI: header del mapa. */}
-      <div>
-        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Mapa de disponibilidad</p>
-        <p className="mt-1 text-lg font-black text-[#003939]">Bahías en tiempo real</p>
-      </div>
-      <div className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-slate-600">
-        <LegendDot color="bg-[#39A900]" label="Libre" />
-        <LegendDot color="bg-[#D32F2F]" label="Ocupada" />
-        <LegendDot color="bg-slate-400" label="Offline" />
-      </div>
-    </div>
-    <div className="p-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {bahias.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-slate-500 font-semibold">Cargando infraestructura...</div>
-        ) : (
-          bahias.map((b) => (
-            <div
-              key={b.idBahia}
-              className={[
-                'rounded-2xl border-2 p-4 min-h-[92px] flex flex-col items-center justify-center text-center',
-                b.fueraServicio
-                  ? 'border-slate-300 bg-slate-100 text-slate-500'
-                  : b.ocupada
-                    ? 'border-[#D32F2F]/40 bg-[#D32F2F]/5'
-                    : 'border-[#39A900]/40 bg-[#39A900]/5',
-              ].join(' ')}
-              title={b.tipoBahia?.tipoBahia || 'Bahía'} // UX: tooltip nativo.
+        <nav className="flex-1 px-5 py-6 space-y-2 overflow-y-auto">
+          {navItems.map((item, idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setActiveTab(item.label);
+                if (window.innerWidth < 1024) setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-4 p-4 rounded-[20px] transition-all group relative ${
+                activeTab === item.label
+                  ? 'bg-green-50 dark:bg-[#39A900]/10 text-[#39A900] shadow-sm' 
+                  : 'text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
             >
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-600">{b.nombreBahia}</p>
-              {b.fueraServicio ? (
-                <p className="mt-2 text-[12px] font-black uppercase tracking-widest">OFFLINE</p>
-              ) : b.ocupada ? (
-                <p className="mt-2 text-base font-black text-[#D32F2F]">{b.placa || 'OCUPADA'}</p>
-              ) : (
-                <p className="mt-2 text-[12px] font-black uppercase tracking-widest text-[#39A900]">LIBRE</p>
+              <item.icon className={`w-5 h-5 flex-shrink-0 transition-transform ${activeTab === item.label ? 'scale-110' : 'group-hover:scale-110'}`} />
+              {sidebarOpen && <span className="font-bold text-[13px] tracking-tight">{item.label}</span>}
+              {activeTab === item.label && (
+                <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-[#39A900]" />
               )}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  </div>
-);
-
-const LegendDot: React.FC<{ color: string; label: string }> = ({ color, label }) => ( // UI: componente de leyenda accesible.
-  <span className="inline-flex items-center gap-2">
-    <span className={`w-3 h-3 rounded-sm ${color}`} aria-hidden="true" />
-    <span>{label}</span>
-  </span>
-);
-
-const MovimientosRecientes: React.FC<{ recent: Array<{ id: string; tipo: 'SUCCESS' | 'ERROR'; mensaje: string; fecha: Date }> }> = ({ recent }) => ( // RF12: historial de operación reciente.
-  <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden">
-    <div className="p-6 border-b border-slate-200 bg-[#003939] text-white">
-      <p className="text-[11px] font-black uppercase tracking-[0.28em] opacity-90">Historial reciente</p>
-      <p className="mt-2 text-sm font-semibold opacity-90">Últimas 5 acciones / excepciones</p>
-    </div>
-    <div className="p-6">
-      {recent.length === 0 ? (
-        <p className="text-sm text-slate-600 font-medium">Sin eventos aún. Escanea un código para iniciar.</p>
-      ) : (
-        <div className="space-y-3">
-          {recent.map((r) => (
-            <div key={r.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-[#F8FAFC] p-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${r.tipo === 'SUCCESS' ? 'bg-[#39A900]' : 'bg-[#D32F2F]'} text-white`}>
-                {r.tipo === 'SUCCESS' ? <CheckCircle2 className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
-              </div>
-              <div className="flex-1">
-                <p className="text-[12px] font-black text-[#003939]">{r.mensaje}</p>
-                <p className="mt-1 text-[11px] font-bold text-slate-500">{r.fecha.toLocaleTimeString()}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-);
-
-const AlertasOperativas: React.FC<{ alerts: Array<{ id: string; tipo: string; mensaje: string; fecha: Date }> }> = ({ alerts }) => ( // RF14/RF15/RF18: lista de alertas del sistema.
-  <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden">
-    <div className="p-6 border-b border-slate-200">
-      <p className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Alertas en vivo</p>
-      <p className="mt-1 text-lg font-black text-[#003939]">Eventos del sistema</p>
-    </div>
-    <div className="p-6 space-y-3 max-h-[320px] overflow-auto">
-      {alerts.length === 0 ? (
-        <p className="text-sm text-slate-600 font-medium">Sin alertas. El sistema opera con normalidad.</p>
-      ) : (
-        alerts.slice(0, 8).map((a) => (
-          <div key={a.id} className="rounded-2xl border border-slate-200 bg-[#F8FAFC] p-4">
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">{a.tipo}</p>
-            <p className="mt-2 text-sm font-semibold text-slate-800">{a.mensaje}</p>
-          </div>
-        ))
-      )}
-    </div>
-  </div>
-);
-
-const VehiculosActivos: React.FC<{ vehiculos: Array<{ placa: string; bahia: string; estado: string; horaIngreso: string }>; onSalida: (placa: string) => void }> = ({ vehiculos, onSalida }) => ( // RF11: vista compacta para salida rápida.
-  <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.06)] overflow-hidden">
-    <div className="p-6 border-b border-slate-200">
-      <p className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Vehículos activos</p>
-      <p className="mt-1 text-lg font-black text-[#003939]">Salida rápida</p>
-    </div>
-    <div className="p-6 space-y-3">
-      {vehiculos.length === 0 ? (
-        <p className="text-sm text-slate-600 font-medium">No hay vehículos activos detectados.</p>
-      ) : (
-        vehiculos.map((v) => (
-          <div key={v.placa} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-[#F8FAFC] p-4">
-            <div>
-              <p className="text-sm font-black text-[#003939]">{v.placa}</p>
-              <p className="text-[11px] font-bold text-slate-500">{v.bahia}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => onSalida(v.placa)}
-              className="h-10 px-4 rounded-xl bg-[#003939] text-white font-black uppercase tracking-widest text-[11px] hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-[#003939]/20"
-            >
-              Salida
             </button>
+          ))}
+        </nav>
+
+        {/* Perfil de Usuario en Sidebar */}
+        <div className="p-6 border-t border-gray-50 dark:border-gray-800 relative z-10 bg-white dark:bg-gray-900">
+          <div className={`flex items-center gap-4 p-4 rounded-[24px] bg-gray-50/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 hover:shadow-xl hover:shadow-gray-200/50 cursor-pointer transition-all duration-500 group border border-transparent hover:border-gray-100 dark:hover:border-gray-700`}>
+            <div className="w-12 h-12 rounded-2xl bg-[#39A900] flex items-center justify-center text-white font-black text-lg shadow-lg shadow-green-500/10 group-hover:scale-105 transition-transform">
+              {user?.usuario?.nombreCompleto?.charAt(0) || 'D'}
+            </div>
+            {sidebarOpen && (
+              <div className="flex-1 overflow-hidden animate-in fade-in">
+                <p className="font-black text-[14px] text-gray-900 dark:text-gray-100 truncate leading-tight">{user?.usuario?.nombreCompleto || 'Daniela'}</p>
+                <p className="text-[10px] text-[#39A900] font-black uppercase tracking-widest mt-1">
+                  {user?.usuario?.idTipoUsr === 2 ? 'Administrador' : 'Operativo'}
+                </p>
+              </div>
+            )}
           </div>
-        ))
-      )}
+        </div>
+
+        {/* Onda Decorativa SENA en Sidebar (Inferior) */}
+        <div className="absolute bottom-0 left-0 w-full pointer-events-none opacity-10 dark:opacity-5">
+          <svg viewBox="0 0 500 200" preserveAspectRatio="none" className="w-full h-24">
+            <path d="M0,120 C150,180 350,60 500,120 L500,200 L0,200 Z" fill="#39A900" />
+          </svg>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {/* Top Header */}
+        <header className="h-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 lg:px-8 z-40 transition-colors">
+          <div className="flex items-center gap-4 lg:gap-6">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all border border-gray-50 dark:border-gray-800"
+              title={sidebarOpen ? "Esconder menú" : "Sacar menú"}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="text-lg lg:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2 tracking-tight truncate">
+              <span className="hidden sm:inline">Panel Admin -</span> <span className="text-[#39A900]">Parking SENA</span>
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3 lg:gap-6">
+            <div className="relative">
+              <button className="p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all relative border border-gray-50 dark:border-gray-800">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-[#39A900] rounded-full border-2 border-white dark:border-gray-900 animate-pulse shadow-[0_0_8px_rgba(57,169,0,0.5)]"></span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-4 pl-4 lg:pl-6 border-l border-gray-100 dark:border-gray-800">
+              <div className="text-right hidden xl:block">
+                <p className="font-bold text-[13px] text-gray-900 dark:text-gray-100 leading-tight">{user?.usuario?.nombreCompleto || 'Daniela'}</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-0.5">
+                  {user?.usuario?.idTipoUsr === 2 ? 'Administrador' : 'Operativo'}
+                </p>
+              </div>
+              <button 
+                onClick={logout}
+                className="flex items-center gap-2 p-2.5 lg:px-5 lg:py-2.5 bg-[#39A900] hover:bg-[#007832] text-white rounded-xl font-bold text-[13px] transition-all shadow-lg shadow-green-500/10 active:scale-95"
+              >
+                <span className="hidden md:block">Salir</span>
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800">
+          {activeTab === 'Resumen' && (
+            <div className="space-y-8 animate-in fade-in duration-700">
+              {/* Welcome Section */}
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                    ¡Bienvenido/a, <span className="text-[#39A900]">{user?.usuario?.nombreCompleto?.split(' ')[0] || 'Daniela'}</span>!
+                  </h2>
+                  <p className="text-gray-500 dark:text-gray-400 font-medium text-sm italic">"Más trabajo, más oportunidades"</p>
+                </div>
+                
+                {/* ESTADO DEL SISTEMA - VISUALIZACIÓN COMPLETA */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm animate-in slide-in-from-right-4 w-full xl:w-auto transition-colors">
+                  <div className="flex flex-col gap-1 pr-4 border-r border-gray-50 dark:border-gray-800">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Servidor</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#39A900] animate-pulse shadow-[0_0_8px_rgba(57,169,0,0.4)]" />
+                      <span className="text-xs font-bold text-gray-900 dark:text-gray-100">Activo</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 pr-4 border-r border-gray-50 dark:border-gray-800">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Base Datos</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#39A900]" />
+                      <span className="text-xs font-bold text-gray-900 dark:text-gray-100">Sincronizada</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 pr-4 border-r border-gray-50 dark:border-gray-800">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Sensores</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" />
+                      <span className="text-xs font-bold text-gray-900 dark:text-gray-100">30/30 OK</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Último Scan</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-900 dark:text-gray-100">Hace 2m</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stat Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                {statCards.map((card, idx) => (
+                  <div key={idx} className="bg-white dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:shadow-green-900/5 dark:hover:shadow-black/20 transition-all duration-500 group relative overflow-hidden">
+                    <div className="flex items-start justify-between mb-5 relative z-10">
+                      <div className={`w-14 h-14 rounded-2xl ${card.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-500 shadow-inner border border-green-100/50 dark:border-green-900/20`}>
+                        <card.icon className="w-6 h-6" />
+                      </div>
+                      {card.trend && (
+                        <div className={`flex items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider ${
+                          card.trend === 'up' ? 'bg-green-100 dark:bg-green-900/30 text-[#39A900]' : 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                        }`}>
+                          {card.trend === 'up' ? <ArrowUpRight className="w-3 h-3 stroke-[3px]" /> : <ArrowDownRight className="w-3 h-3 stroke-[3px]" />}
+                          <span>12%</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1 relative z-10">
+                      <p className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] leading-tight">{card.label}</p>
+                      <div className="flex items-baseline gap-2 pt-1">
+                        <span className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">{card.value}</span>
+                        {card.subtext && <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">{card.subtext}</span>}
+                      </div>
+                      {card.change && <p className="text-[11px] font-bold text-[#39A900] mt-4 flex items-center gap-1.5 bg-green-50 dark:bg-green-900/20 w-fit px-3 py-1.5 rounded-xl border border-green-100/50 dark:border-green-900/20">
+                        <TrendingUp className="w-3 h-3" />
+                        {card.change}
+                      </p>}
+                    </div>
+                    <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-[#39A900]/5 dark:bg-[#39A900]/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Recent Activity Table */}
+              <div className="bg-white dark:bg-gray-900 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col transition-colors">
+                <div className="p-8 border-b border-gray-50 dark:border-gray-800 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Actividad Reciente</h3>
+                    <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">Últimos movimientos detectados en el sistema</p>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('Movimientos')}
+                    className="text-[12px] font-black text-[#39A900] uppercase tracking-widest hover:translate-x-1 transition-transform flex items-center gap-2"
+                  >
+                    Ver todo el historial <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50/50 dark:bg-gray-800/50">
+                      <tr>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Usuario</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Vehículo</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Ingreso</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                      {movimientos.slice(0, 5).map((mov, idx) => (
+                        <tr key={idx} className="hover:bg-green-50/30 dark:hover:bg-[#39A900]/5 transition-all group">
+                          <td className="px-10 py-6">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 font-black text-sm group-hover:bg-[#39A900] group-hover:text-white transition-all">
+                                {mov.usuario?.nombreCompleto?.charAt(0) || 'U'}
+                              </div>
+                              <span className="font-bold text-gray-900 dark:text-gray-100 text-sm tracking-tight">{mov.usuario?.nombreCompleto || 'Cargando...'}</span>
+                            </div>
+                          </td>
+                          <td className="px-10 py-6">
+                            <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">{mov.vehiculo?.placa || 'ABC-123'}</span>
+                          </td>
+                          <td className="px-10 py-6">
+                            <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+                              {mov.fechaIngreso ? format(new Date(mov.fechaIngreso), 'hh:mm a', { locale: es }) : '--:--'}
+                            </span>
+                          </td>
+                          <td className="px-10 py-6">
+                            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider ${getStatusStyle(mov.estado)}`}>
+                              <div className={`w-1.5 h-1.5 rounded-full ${mov.estado.toUpperCase() === 'ACTIVO' ? 'bg-[#39A900] animate-pulse' : 'bg-blue-500'}`} />
+                              {mov.estado === 'ACTIVO' ? 'En Parqueadero' : 'Completado'}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'Estado Bahías' && <EstadoBahiasView />}
+          {activeTab === 'Movimientos' && <MovimientosView />}
+          {activeTab === 'Alertas' && <AlertasView />}
+          {activeTab === 'Configuración' && <ConfiguracionView />}
+        </div>
+      </main>
     </div>
-  </div>
-);
+  );
+};

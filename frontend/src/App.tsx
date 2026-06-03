@@ -5,7 +5,6 @@ import Registro from './registro';
 import ProtectedRoute from './ProtectedRoute';
 import { AuthProvider, useAuth } from './AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import { OperativoDashboard } from './pages/OperativoDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminLayout } from './layouts/AdminLayout';
 import { UsuariosPage } from './pages/admin/UsuariosPage';
@@ -189,6 +188,13 @@ function App() {
                 <Route path="alertas" element={<AlertasView />} />
                 <Route path="configuracion" element={<ConfiguracionView />} />
               </Route>
+
+              {/* Alias para rutas operativo solicitadas */}
+              <Route path="/control-acceso" element={<Navigate to="/appperop" replace />} />
+              <Route path="/estado-salidas" element={<Navigate to="/appperop/bahias" replace />} />
+              <Route path="/movimientos" element={<Navigate to="/appperop/movimientos" replace />} />
+              <Route path="/alertas" element={<Navigate to="/appperop/alertas" replace />} />
+              <Route path="/configuracion" element={<Navigate to="/appperop/configuracion" replace />} />
 
               <Route path="/app" element={<ProtectedRoute allowedRoles={[UserRole.APRENDIZ]}><PanelAprendiz /></ProtectedRoute>} />
 

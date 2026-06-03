@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { socketService } from '../services/socket.service';
-import { bahiasService, operativoService } from '../services/operativo.service';
+import { bahiasService, operativoService, dashboardService } from '../services/operativo.service';
 import type { Bahia, BahiaEstado, BahiaModificadaPayload, ConteoGlobalDisponiblesPayload, Movement } from '../types';
 
 interface OperativoStats {
@@ -8,6 +8,7 @@ interface OperativoStats {
   ocupados: number;
   disponibles: number;
   vehiculosActivos: number;
+  usuariosRegistrados: number;
 }
 
 interface Alert {
@@ -22,12 +23,31 @@ interface Alert {
  * FEATURE: Maneja la sincronización de estados y la integración con WebSockets.
  */
 export const useOperativo = () => {
-  const [stats, setStats] = useState<OperativoStats>({ total: 0, ocupados: 0, disponibles: 0, vehiculosActivos: 0 });
+  const [stats, setStats] = useState<OperativoStats>({ 
+    total: 0, 
+    ocupados: 0, 
+    disponibles: 0, 
+    vehiculosActivos: 0,
+    usuariosRegistrados: 0
+  });
   const [bahias, setBahias] = useState<Bahia[]>([]);
   const [vehiculos, setVehiculos] = useState<Movement[]>([]);
+  const [movimientos, setMovimientos] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; tipo: 'success' | 'error' } | null>(null);
+
+  /**
+   * Carga el historial de movimientos.
+   */
+  const loadHistorial = useCallback(async (page = 1, limit = 20) => {
+    try {
+      const response = await operativoService.getHistorial(page, limit);
+      setMovimientos(response.data || []);
+    } catch (error) {
+      console.error('Error al cargar historial:', error);
+    }
+  }, []);
 
   /**
    * Muestra una notificación temporal en la interfaz.
@@ -61,23 +81,28 @@ export const useOperativo = () => {
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await operativoService.resumenTurno();
+      const [res, totalUsr] = await Promise.all([
+        operativoService.resumenTurno(),
+        dashboardService.getTotalUsuarios()
+      ]);
       const { ocupacion } = res;
       
       setStats({
         total: ocupacion.total,
         ocupados: ocupacion.ocupados,
         disponibles: ocupacion.disponibles,
-        vehiculosActivos: ocupacion.ocupados
+        vehiculosActivos: ocupacion.ocupados,
+        usuariosRegistrados: totalUsr
       });
       setBahias(ocupacion.bahias);
       setVehiculos(mapActivosFromBahias(ocupacion.bahias));
+      await loadHistorial();
     } catch (error) {
       showToast('Error de conexión: No se pudieron cargar los datos de infraestructura', 'error');
     } finally {
       setLoading(false);
     }
-  }, [mapActivosFromBahias, showToast]);
+  }, [mapActivosFromBahias, showToast, loadHistorial]);
 
   /**
    * Procesa una salida rápida desde la tabla de vehículos.
@@ -87,6 +112,7 @@ export const useOperativo = () => {
     try {
       await operativoService.registrarSalida(placa);
       showToast(`Vehículo ${placa} retirado exitosamente`, 'success');
+      await loadHistorial();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'No se pudo procesar la salida', 'error');
     }
@@ -101,12 +127,13 @@ export const useOperativo = () => {
       pollTimer = window.setInterval(async () => {
         try {
           const ocupacion = await bahiasService.getOcupacion();
-          setStats({
+          setStats(prev => ({
             total: ocupacion.total,
             ocupados: ocupacion.ocupados,
             disponibles: ocupacion.disponibles,
             vehiculosActivos: ocupacion.ocupados,
-          });
+            usuariosRegistrados: prev.usuariosRegistrados,
+          }));
           setBahias(ocupacion.bahias);
           setVehiculos(mapActivosFromBahias(ocupacion.bahias));
         } catch {
@@ -117,12 +144,13 @@ export const useOperativo = () => {
     
     // SOCKET: Suscripción a eventos operativos realtime
     const handleConteoGlobal = (data: ConteoGlobalDisponiblesPayload) => {
-      setStats({
+      setStats(prev => ({
         total: data.total,
         ocupados: data.ocupados,
         disponibles: data.disponibles,
         vehiculosActivos: data.ocupados,
-      });
+        usuariosRegistrados: prev.usuariosRegistrados,
+      }));
 
       if (data.disponibles === 0 && data.total > 0) {
         setAlerts(prev => {
@@ -174,10 +202,12 @@ export const useOperativo = () => {
 
     const handleIngreso = (data: any) => {
       showToast(`Nuevo ingreso detectado: ${data.placa} en ${data.bahia}`, 'success');
+      loadHistorial();
     };
 
     const handleRetirado = (data: any) => {
       showToast(`Salida detectada: ${data.placa}`, 'success');
+      loadHistorial();
     };
 
     const handleAlerta = (data: any) => {
@@ -223,12 +253,13 @@ export const useOperativo = () => {
       socketService.off('alerta_parqueadero', handleAlerta);
       socketService.off('sensor_offline', handleSensorOffline);
     };
-  }, [loadInitialData, mapActivosFromBahias, showToast]);
+  }, [loadInitialData, mapActivosFromBahias, showToast, loadHistorial]);
 
   return {
     stats,
     bahias,
     vehiculos,
+    movimientos,
     alerts,
     loading,
     toast,

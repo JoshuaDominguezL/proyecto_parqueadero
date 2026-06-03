@@ -1,13 +1,33 @@
-import React, { useMemo, useState } from 'react';
-import { AlertTriangle, ShieldAlert } from 'lucide-react';
+import React, { useMemo, useRef } from 'react';
+import { 
+  ShieldAlert, ShieldCheck, ClipboardList, 
+  Car, Users, LayoutGrid, Info
+} from 'lucide-react';
 import { useOperativo } from '../../hooks/useOperativo';
 import { useNotification } from '../../contexts/NotificationContext';
 import { MovementForm } from '../../components/MovementForm';
+import type { MovementFormHandle } from '../../components/MovementForm';
+import { operativoService } from '../../services/operativo.service';
 
 export const ControlAccesoView: React.FC = () => {
   const { stats, alerts, loading, refresh } = useOperativo();
   const { showNotification } = useNotification();
-  const [recent, setRecent] = useState<Array<{ id: string; tipo: 'SUCCESS' | 'ERROR'; mensaje: string; fecha: Date }>>([]);
+  const formRef = useRef<MovementFormHandle>(null);
+
+  const handleSalidaEmergencia = async () => {
+    if (!window.confirm('¿ESTÁ SEGURO? Esta acción registrará la salida de todos los vehículos activos.')) return;
+    try {
+      await operativoService.salidaEmergencia();
+      showNotification('Protocolo de emergencia activado. Salidas registradas.', 'success');
+      refresh();
+    } catch (err: any) {
+      showNotification(err.response?.data?.mensaje || 'Error al activar emergencia', 'error');
+    }
+  };
+
+  const handleIngresoManual = () => {
+    formRef.current?.activateManualMode();
+  };
 
   const estadoGlobal = useMemo(() => {
     const tipos = alerts.map(a => String(a.tipo || '').toUpperCase());
@@ -19,83 +39,102 @@ export const ControlAccesoView: React.FC = () => {
   }, [alerts, stats.disponibles, stats.total]);
 
   const estadoStyle = useMemo(() => {
-    if (estadoGlobal === 'DESHABILITADO') return { bg: 'bg-[#D32F2F]', label: 'DESHABILITADO', sub: 'Bloqueo total de ingresos', ring: 'ring-[#D32F2F]/25' };
-    if (estadoGlobal === 'LLENO') return { bg: 'bg-[#FF6B00]', label: 'LLENO', sub: 'Cupos agotados (100%)', ring: 'ring-[#FF6B00]/25' };
-    if (estadoGlobal === 'ALERTA_80') return { bg: 'bg-[#FF6B00]', label: 'ALERTA 80%', sub: 'Ocupación alta', ring: 'ring-[#FF6B00]/25' };
-    return { bg: 'bg-[#39A900]', label: 'DISPONIBLE', sub: 'Ingreso permitido', ring: 'ring-[#39A900]/25' };
+    if (estadoGlobal === 'DESHABILITADO') return { bg: 'bg-red-600', label: 'DESHABILITADO', color: 'text-red-600' };
+    if (estadoGlobal === 'LLENO') return { bg: 'bg-orange-500', label: 'LLENO', color: 'text-orange-500' };
+    if (estadoGlobal === 'ALERTA_80') return { bg: 'bg-orange-400', label: 'ALERTA 80%', color: 'text-orange-400' };
+    return { bg: 'bg-[#39B000]', label: 'DISPONIBLE', color: 'text-[#39B000]' };
   }, [estadoGlobal]);
 
-  const pushRecent = (tipo: 'SUCCESS' | 'ERROR', mensaje: string) => {
-    setRecent((prev) => [{ id: `${Date.now()}-${Math.random()}`, tipo, mensaje, fecha: new Date() }, ...prev].slice(0, 5));
-  };
-
-  if (loading) return null;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="w-10 h-10 border-4 border-[#39B000]/20 border-t-[#39B000] rounded-full animate-spin" />
+    </div>
+  );
 
   return (
-    <div className="space-y-8">
-      {/* Estado del Parqueadero */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm p-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-          <div className="flex items-center gap-6">
-            <div className={`w-20 h-20 rounded-full ${estadoStyle.bg} text-white flex items-center justify-center shadow-lg shadow-black/5`}>
-              {estadoGlobal === 'DESHABILITADO' ? <ShieldAlert size={40} /> : <AlertTriangle size={40} />}
-            </div>
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-400">Estado del Parqueadero</p>
-              <div className="flex items-center gap-3 mt-1">
-                <div className={`w-3 h-3 rounded-full ${estadoStyle.bg} animate-pulse`} />
-                <p className="text-4xl font-black text-[#003939] tracking-tight">{estadoStyle.label}</p>
-              </div>
-              <p className="mt-1 text-sm font-semibold text-slate-500">{estadoStyle.sub}</p>
-            </div>
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500">
+      {/* Resumen de Estado Superior - Compacto */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="md:col-span-1 bg-white dark:bg-[#121212] p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-4 transition-colors duration-300">
+          <div className={`w-10 h-10 rounded-lg ${estadoStyle.bg} flex items-center justify-center text-white shrink-0`}>
+            <ShieldCheck size={20} />
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 lg:min-w-[500px]">
-            <Kpi label="Total" value={stats.total} />
-            <Kpi label="Ocupados" value={stats.ocupados} />
-            <Kpi label="Libres" value={stats.disponibles} highlight />
-            <Kpi label="Ocupación" value={`${Math.round((stats.ocupados / (stats.total || 1)) * 100)}%`} />
+          <div>
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Sistema</p>
+            <p className={`text-sm font-bold ${estadoStyle.color}`}>{estadoStyle.label}</p>
           </div>
         </div>
+        
+        <KpiMini label="Capacidad" value={stats.total} icon={<LayoutGrid size={16} />} />
+        <KpiMini label="Ocupados" value={stats.ocupados} icon={<Car size={16} />} />
+        <KpiMini label="Disponibles" value={stats.disponibles} icon={<Info size={16} />} highlight />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Formulario de Acceso */}
-        <div className="lg:col-span-8">
-          <MovementForm
-            onSuccess={(msg) => { showNotification(msg, 'success'); pushRecent('SUCCESS', msg); refresh(); }}
-            onError={(msg) => { showNotification(msg, 'error'); pushRecent('ERROR', msg); }}
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Área Principal de Gestión */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-white dark:bg-[#121212] rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden transition-colors duration-300">
+            <div className="px-6 py-4 border-b border-gray-50 dark:border-white/5 bg-gray-50/30 dark:bg-white/5 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-[#012E25] dark:text-white uppercase tracking-widest">Control de Acceso</h2>
+              <div className="flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 rounded-full bg-[#39B000] animate-pulse" />
+                 <span className="text-[9px] font-bold text-gray-400 uppercase">Escáner Activo</span>
+              </div>
+            </div>
+            <div className="p-8">
+              <MovementForm
+                ref={formRef}
+                onSuccess={(msg) => { showNotification(msg, 'success'); refresh(); }}
+                onError={(msg) => { showNotification(msg, 'error'); }}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Acciones de Contingencia / Emergencia */}
+        {/* Acciones Secundarias */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 bg-slate-50">
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Protocolos</p>
-              <p className="mt-1 text-lg font-black text-[#003939]">Contingencia</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <button className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 transition-colors text-left group">
-                <div>
-                  <p className="text-sm font-black text-[#003939]">Registro Manual (Contingencia)</p>
-                  <p className="text-[11px] font-bold text-slate-500">Registrar entrada o salida sin código</p>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-white transition-colors">
-                  <span className="text-slate-400">→</span>
-                </div>
-              </button>
+          <div className="bg-white dark:bg-[#121212] rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 p-6 space-y-4 transition-colors duration-300">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Protocolos Especiales</h3>
+            
+            <button 
+              onClick={handleIngresoManual}
+              className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:bg-[#39B000] group-hover:text-white transition-all">
+                <ClipboardList size={18} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[#012E25] dark:text-white">Ingreso Manual</p>
+                <p className="text-[9px] text-gray-400 uppercase">Sin código QR</p>
+              </div>
+            </button>
 
-              <button className="w-full flex items-center justify-between p-4 rounded-2xl border border-red-100 bg-red-50/30 hover:bg-red-50 transition-colors text-left group">
+            <button 
+              onClick={handleSalidaEmergencia}
+              className="w-full flex items-center gap-4 p-4 rounded-xl border border-red-50 dark:border-red-900/20 bg-red-50/10 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-600 dark:text-red-400 group-hover:bg-red-600 group-hover:text-white transition-all">
+                <ShieldAlert size={18} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-red-700 dark:text-red-400">Emergencia</p>
+                <p className="text-[9px] text-red-400 dark:text-red-500/60 uppercase">Liberación total</p>
+              </div>
+            </button>
+          </div>
+
+          <div className="bg-[#012E25] rounded-2xl p-6 text-white relative overflow-hidden shadow-lg shadow-[#012E25]/20">
+             <div className="absolute top-0 right-0 w-24 h-24 bg-[#39B000]/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+             <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-3">Soporte Técnico</p>
+             <div className="flex items-center gap-3 relative z-10">
+                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+                  <Users className="w-5 h-5 text-[#39B000]" />
+                </div>
                 <div>
-                  <p className="text-sm font-black text-red-600">Protocolo de Emergencia</p>
-                  <p className="text-[11px] font-bold text-red-400">Gestionar situaciones de emergencia</p>
+                  <p className="text-xs font-bold">Mesa de Ayuda</p>
+                  <p className="text-[10px] text-white/50">Ext: 22536</p>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center group-hover:bg-white transition-colors text-red-500">
-                  <AlertTriangle size={18} />
-                </div>
-              </button>
-            </div>
+             </div>
           </div>
         </div>
       </div>
@@ -103,9 +142,14 @@ export const ControlAccesoView: React.FC = () => {
   );
 };
 
-const Kpi: React.FC<{ label: string; value: string | number; highlight?: boolean }> = ({ label, value, highlight }) => (
-  <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
-    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-    <p className={`mt-1 text-2xl font-black ${highlight ? 'text-[#39A900]' : 'text-[#003939]'}`}>{value}</p>
+const KpiMini: React.FC<{ label: string; value: string | number; icon: React.ReactNode; highlight?: boolean }> = ({ label, value, icon, highlight }) => (
+  <div className="bg-white dark:bg-[#121212] p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-4 transition-colors duration-300">
+    <div className={`p-2 rounded-lg ${highlight ? 'bg-[#39B000]/10 text-[#39B000]' : 'bg-gray-50 dark:bg-white/5 text-gray-400'}`}>
+      {icon}
+    </div>
+    <div>
+      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+      <p className={`text-base font-bold ${highlight ? 'text-[#39B000]' : 'text-[#012E25] dark:text-white'}`}>{value}</p>
+    </div>
   </div>
 );

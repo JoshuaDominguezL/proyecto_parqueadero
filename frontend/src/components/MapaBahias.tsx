@@ -5,11 +5,7 @@ interface BahiaProps {
   bahia: Bahia;
 }
 
-/**
- * Tarjeta individual de Bahía.
- * FEATURE: Representación visual del estado de la infraestructura.
- * SOCKET: Cambia de color instantáneamente al recibir actualizaciones.
- */
+
 export const BahiaCard: React.FC<BahiaProps> = ({ bahia }) => {
   const estado = (bahia as any).estado as string | undefined;
   const isOffline = (bahia as any).fueraServicio || estado === 'OFFLINE';
@@ -56,10 +52,7 @@ export const BahiaCard: React.FC<BahiaProps> = ({ bahia }) => {
   );
 };
 
-/**
- * Grid Interactivo de Bahías.
- * FEATURE: Mapa de calor visual del estado del parqueadero.
- */
+
 export const MapaBahias: React.FC<{ bahias: Bahia[] }> = ({ bahias }) => {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-6 bg-gray-900/50 rounded-2xl border border-gray-800">
