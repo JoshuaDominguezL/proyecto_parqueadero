@@ -126,10 +126,10 @@ export class AuthService implements OnModuleInit {
    * PERFORMANCE: Usa bloqueo pesimista para evitar condiciones de carrera en verificaciones simultáneas.
    * @param dto Datos de verificación
    */
-  async verificarOtp(dto: VerificarOtpDto): Promise<{ 
-    access_token: string; 
-    refresh_token: string; 
-    usuario: Omit<Usuario, 'contra'> & { rol: string } 
+  async verificarOtp(dto: VerificarOtpDto): Promise<{
+    access_token: string;
+    refresh_token: string;
+    usuario: Omit<Usuario, 'contra'> & { rol: string }
   }> {
     return await this.otpRepository.manager.transaction(async (manager) => {
       const correoNormalizado = String(dto?.correo ?? '').trim().toLowerCase();
@@ -194,20 +194,20 @@ export class AuthService implements OnModuleInit {
       await manager.save(otp);
 
       const tokens = await this.generarTokens(usuario, manager);
-      
+
       // SERIALIZATION: Aseguramos que el objeto enviado al cliente tenga los campos 
       // con los nombres esperados por el frontend y que idTipoUsr esté presente.
       const rolNombre = TipoUsuarioEnum[usuario.idTipoUsr] || 'APRENDIZ';
 
       const { contra, ...usuarioSinContrasena } = usuario;
 
-      return { 
-        ...tokens, 
+      return {
+        ...tokens,
         usuario: {
           ...usuarioSinContrasena,
           idTipoUsr: usuario.idTipoUsr,
           rol: rolNombre
-        } 
+        }
       };
     });
   }
@@ -462,6 +462,7 @@ export class AuthService implements OnModuleInit {
     try {
       await this.mailService.enviarCodigoOtp(usuario.correo, codigo, usuario.nombreCompleto);
     } catch (error) {
+      this.logger.error('Fallo al enviar OTP via MailService:', error);
       await this.otpRepository.update({ idOtp }, { usado: true });
       throw new InternalServerErrorException('No se pudo enviar el código de verificación. Intenta de nuevo.');
     }

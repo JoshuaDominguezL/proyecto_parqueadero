@@ -18,6 +18,9 @@ export const VehiculosPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [soloAdentro, setSoloAdentro] = useState(false);
 
+  const [selectedVehiculo, setSelectedVehiculo] = useState<AdminVehiculoItem | null>(null);
+  const [isOwnerModalOpen, setIsOwnerModalOpen] = useState(false);
+
   const [isEmergenciaOpen, setIsEmergenciaOpen] = useState(false);
   const [placaSeleccionada, setPlacaSeleccionada] = useState<string>('');
   const [motivo, setMotivo] = useState('');
@@ -102,7 +105,7 @@ export const VehiculosPage: React.FC = () => {
     {
       header: 'Vehículo',
       accessor: (v: AdminVehiculoItem) => (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setSelectedVehiculo(v); setIsOwnerModalOpen(true); }}>
           <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-blue-600">
             <Car size={18} />
           </div>
@@ -114,6 +117,15 @@ export const VehiculosPage: React.FC = () => {
               {typeof v.tipoVehiculo === 'string' ? v.tipoVehiculo : v.tipoVehiculo?.tipoVehiculo || 'N/A'}
             </p>
           </div>
+        </div>
+      ),
+    },
+    {
+      header: 'Propietario',
+      accessor: (v: AdminVehiculoItem) => (
+        <div className="flex flex-col cursor-pointer" onClick={() => { setSelectedVehiculo(v); setIsOwnerModalOpen(true); }}>
+          <span className="text-xs font-black text-slate-900">{v.usuario?.nombreCompleto || 'Sin asignar'}</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">DOC: {v.usuario?.documento || '—'}</span>
         </div>
       ),
     },
@@ -154,16 +166,12 @@ export const VehiculosPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gestión de Vehículos</h1>
-          <p className="text-slate-500 text-sm font-medium uppercase tracking-widest">RF20 • Control de flota y contingencias</p>
-        </div>
+      <header className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 -mt-20 mb-10 relative z-50">
         <div className="flex flex-wrap gap-2">
-          <Button variant={soloAdentro ? 'primary' : 'outline'} size="sm" onClick={() => setSoloAdentro((v) => !v)}>
+          <Button variant={soloAdentro ? 'primary' : 'outline'} size="sm" onClick={() => setSoloAdentro((v) => !v)} className={soloAdentro ? 'bg-[#39A900] border-transparent' : ''}>
             {soloAdentro ? 'Solo ADENTRO' : 'Todos'}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => fetchVehiculos()}>
+          <Button variant="outline" size="sm" onClick={() => fetchVehiculos()} className="bg-white">
             Refrescar
           </Button>
         </div>
@@ -192,6 +200,67 @@ export const VehiculosPage: React.FC = () => {
         isLoading={loading}
         emptyMessage="No se encontraron vehículos"
       />
+
+      {/* Modal de Información del Propietario */}
+      <Modal
+        isOpen={isOwnerModalOpen}
+        onClose={() => setIsOwnerModalOpen(false)}
+        title="Información del Propietario"
+      >
+        {selectedVehiculo?.usuario ? (
+          <div className="space-y-6">
+            <div className="flex items-center gap-6 p-5 bg-slate-900 rounded-[24px] text-white">
+              <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-white font-black text-xl">
+                {selectedVehiculo.usuario.nombreCompleto?.charAt(0)}
+              </div>
+              <div>
+                <h3 className="text-lg font-black leading-tight">{selectedVehiculo.usuario.nombreCompleto}</h3>
+                <p className="text-[10px] font-black text-[#39A900] uppercase tracking-[0.2em] mt-1">
+                  {selectedVehiculo.usuario.idTipoUsr === 1 ? 'Usuario Aprendiz' : selectedVehiculo.usuario.idTipoUsr === 2 ? 'Administrador' : 'Operativo'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Documento</p>
+                <p className="text-sm font-bold text-slate-900 mt-1">{selectedVehiculo.usuario.documento}</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Estado</p>
+                <p className="text-sm font-bold text-emerald-600 mt-1">ACTIVO</p>
+              </div>
+              <div className="col-span-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Correo Electrónico</p>
+                <p className="text-sm font-bold text-slate-900 mt-1">{selectedVehiculo.usuario.correo}</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Teléfono</p>
+                <p className="text-sm font-bold text-slate-900 mt-1">{selectedVehiculo.usuario.numTelf || '—'}</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white">
+                  <Car size={16} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Vehículo Seleccionado</p>
+                  <p className="text-sm font-bold text-emerald-900">{selectedVehiculo.placa} • {selectedVehiculo.color}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="text-slate-300" size={32} />
+            </div>
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin información de propietario</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={isEmergenciaOpen}

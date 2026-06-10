@@ -97,12 +97,12 @@ export const usuariosService = {
     return response.data;
   },
 
-  listarUsuariosAdmin: async (params?: { q?: string; estado?: 'ACTIVO' | 'INACTIVO' | 'TODOS' }): Promise<BackendEnvelope<AdminUsuarioItem[]>> => {
-    const query = new URLSearchParams();
-    if (params?.q) query.set('q', params.q);
-    if (params?.estado) query.set('estado', params.estado);
-    const suffix = query.toString() ? `?${query.toString()}` : '';
-    const response = await api.get(`/admin/usuarios${suffix}`);
+  listarUsuariosAdmin: async (params?: { 
+    q?: string; 
+    estado?: 'ACTIVO' | 'INACTIVO' | 'TODOS';
+    rol?: 'USUARIO' | 'OPERATIVO' | 'ADMIN' | 'TODOS';
+  }): Promise<BackendEnvelope<AdminUsuarioItem[]>> => {
+    const response = await api.get('/admin/usuarios', { params });
     return response.data;
   },
 };

@@ -421,13 +421,21 @@ export class UsuarioService {
     const nombre = query.nombre?.trim();
     const documento = query.documento?.trim();
     const estado = query.estado ?? 'TODOS';
+    const rol = query.rol ?? 'TODOS';
 
     const qb = this.usuarioRepository
       .createQueryBuilder('u')
       .withDeleted()
       .leftJoinAndSelect('u.registrosVehiculos', 'rv')
-      .leftJoinAndSelect('rv.vehiculo', 'vehiculo')
-      .where('u.id_tipo_usr != :adminRol', { adminRol: TipoUsuarioEnum.ADMIN });
+      .leftJoinAndSelect('rv.vehiculo', 'vehiculo');
+
+    if (rol === 'USUARIO') {
+      qb.andWhere('u.id_tipo_usr = :rolId', { rolId: TipoUsuarioEnum.APRENDIZ });
+    } else if (rol === 'OPERATIVO') {
+      qb.andWhere('u.id_tipo_usr = :rolId', { rolId: TipoUsuarioEnum.OPERATIVO });
+    } else if (rol === 'ADMIN') {
+      qb.andWhere('u.id_tipo_usr = :rolId', { rolId: TipoUsuarioEnum.ADMIN });
+    }
 
     if (estado === 'ACTIVO') {
       qb.andWhere('u.deleted_at IS NULL');

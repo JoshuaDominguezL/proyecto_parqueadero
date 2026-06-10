@@ -166,6 +166,8 @@ export class VehiculosService implements OnModuleInit {
     const qb = this.vehiculoRepository
       .createQueryBuilder('v')
       .leftJoinAndSelect('v.tipoVehiculo', 'tv')
+      .leftJoinAndSelect('v.registrosUsuarios', 'rv')
+      .leftJoinAndSelect('rv.usuario', 'u')
       .orderBy('v.placa', 'ASC');
 
     if (placa) {
@@ -183,8 +185,8 @@ export class VehiculosService implements OnModuleInit {
     const subQuery = qb.subQuery()
       .select('1')
       .from(MovimientoVehiculo, 'mv')
-      .innerJoin(RegistroVehiculo, 'rv', 'rv.id_registro_v = mv.id_registro_vehiculo')
-      .where('rv.id_vehiculo = v.placa')
+      .innerJoin(RegistroVehiculo, 'rv2', 'rv2.id_registro_v = mv.id_registro_vehiculo')
+      .where('rv2.id_vehiculo = v.placa')
       .andWhere('mv.estado = :estadoAdentro', { estadoAdentro: EstadoMovimiento.ADENTRO })
       .andWhere('mv.deleted_at IS NULL')
       .getQuery();
@@ -196,9 +198,15 @@ export class VehiculosService implements OnModuleInit {
     return entities.map((vehiculo, idx) => {
       const isAdentroRaw = raw[idx]?.is_adentro;
       const isAdentro = isAdentroRaw === true || isAdentroRaw === 't' || isAdentroRaw === 1 || isAdentroRaw === '1';
+      
+      // Mapear el primer usuario asociado (asumiendo uno principal para la vista rápida)
+      const primerRegistro = (vehiculo.registrosUsuarios || [])[0];
+      const usuario = primerRegistro ? primerRegistro.usuario : null;
+
       return {
         ...vehiculo,
         isAdentro,
+        usuario,
       };
     });
   }

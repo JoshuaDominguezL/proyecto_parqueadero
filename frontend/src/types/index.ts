@@ -122,6 +122,7 @@ export interface AdminUsuarioItem extends User {
 
 export interface AdminVehiculoItem extends Vehiculo {
   isAdentro: boolean;
+  usuario?: User | null;
 }
 
 export interface CreateVehiculoDto {

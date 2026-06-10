@@ -68,36 +68,33 @@ export class MailService {
    * Envía el código OTP al correo del usuario.
    */
   async enviarCodigoOtp(destinatario: string, codigo: string, nombreUsuario: string): Promise<void> {
-    const remitenteNombre = this.configService.get<string>('MAIL_FROM_NAME') ?? 'Parqueadero SENA';
-    const remitenteCorreo = this.configService.get<string>('MAIL_USER');
-
-    const html = this.plantillaHtml(codigo, nombreUsuario);
-
-    if (this.disabled) {
-      throw new InternalServerErrorException('Servicio de correo no configurado.');
-    }
-
-    if (!this.transporter || !remitenteCorreo) {
-      throw new InternalServerErrorException('Servicio de correo no configurado.');
-    }
-
-    try {
-      await this.transporter.sendMail({
-        from: `"${remitenteNombre}" <${remitenteCorreo}>`,
-        to: destinatario,
-        subject: 'Tu código de acceso - Sistema de Parqueadero SENA',
-        html,
-      });
-      // RNF2 (Privacidad): no registramos el correo del destinatario (PII) en logs.
-      this.logger.log('Correo OTP enviado');
-    } catch (error) {
-      // RNF2 (Privacidad): no registramos el correo del destinatario (PII) en logs de error.
-      this.logger.error('Error al enviar correo OTP', error);
-      throw new InternalServerErrorException(
-        'No se pudo enviar el código de verificación. Intenta de nuevo.',
-      );
-    }
+  // BYPASS: en desarrollo imprime el OTP en consola sin necesitar SMTP
+  if (process.env.NODE_ENV === 'development') {
+    this.logger.log(`[DEV - OTP] Usuario: ${nombreUsuario} | Código: ${codigo}`);
+    return;
   }
+
+  const remitenteNombre = this.configService.get<string>('MAIL_FROM_NAME') ?? 'Parqueadero SENA';
+  const remitenteCorreo = this.configService.get<string>('MAIL_USER');
+  const html = this.plantillaHtml(codigo, nombreUsuario);
+
+  if (this.disabled || !this.transporter || !remitenteCorreo) {
+    throw new InternalServerErrorException('Servicio de correo no configurado.');
+  }
+
+  try {
+    await this.transporter.sendMail({
+      from: `"${remitenteNombre}" <${remitenteCorreo}>`,
+      to: destinatario,
+      subject: 'Tu código de acceso - Sistema de Parqueadero SENA',
+      html,
+    });
+    this.logger.log('Correo OTP enviado');
+  } catch (error) {
+    this.logger.error('Error al enviar correo OTP', error);
+    throw new InternalServerErrorException('No se pudo enviar el código de verificación. Intenta de nuevo.');
+  }
+}
 
   async enviarNotificacionSalidaEmergencia(
     destinatario: string,
