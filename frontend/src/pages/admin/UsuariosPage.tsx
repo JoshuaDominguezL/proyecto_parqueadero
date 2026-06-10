@@ -70,12 +70,12 @@ export const UsuariosPage: React.FC = () => {
       header: 'Usuario',
       accessor: (u: AdminUsuarioItem) => (
         <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setSelectedUser(u); setIsDetailsOpen(true); }}>
-          <div className="w-12 h-12 rounded-xl bg-slate-50 overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center text-slate-700">
+          <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-white/5 overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-300">
             {u.fotoPersona ? <img src={u.fotoPersona} alt={u.nombreCompleto} className="w-full h-full object-cover" /> : <UserIcon size={24} />}
           </div>
           <div>
-            <p className="text-sm font-black text-slate-900 leading-tight">{u.nombreCompleto}</p>
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">DOC: {u.documento}</p>
+            <p className="text-sm font-black text-slate-900 dark:text-white leading-tight">{u.nombreCompleto}</p>
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">DOC: {u.documento}</p>
           </div>
         </div>
       ),
@@ -84,11 +84,11 @@ export const UsuariosPage: React.FC = () => {
       header: 'Rol',
       accessor: (u: AdminUsuarioItem) => {
         const roles: Record<number, { label: string, color: string }> = {
-          1: { label: 'Usuario', color: 'bg-blue-50 text-blue-700 border-blue-100' },
-          2: { label: 'Admin', color: 'bg-slate-900 text-white border-transparent' },
-          3: { label: 'Operativo', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+          1: { label: 'Usuario', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-800/30' },
+          2: { label: 'Admin', color: 'bg-slate-900 dark:bg-white/10 text-white border-transparent' },
+          3: { label: 'Operativo', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/30' },
         };
-        const r = roles[u.idTipoUsr] || { label: 'Desconocido', color: 'bg-gray-50 text-gray-700 border-gray-100' };
+        const r = roles[u.idTipoUsr] || { label: 'Desconocido', color: 'bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-400 border-gray-100 dark:border-gray-800/30' };
         return (
           <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${r.color}`}>
             {r.label}
@@ -100,11 +100,11 @@ export const UsuariosPage: React.FC = () => {
       header: 'Contacto',
       accessor: (u: AdminUsuarioItem) => (
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-            <Mail size={12} className="text-slate-500" /> {u.correo}
+          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+            <Mail size={12} className="text-slate-500 dark:text-slate-500" /> {u.correo}
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-            <Smartphone size={12} className="text-emerald-600" /> {u.numTelf || '—'}
+          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+            <Smartphone size={12} className="text-emerald-600 dark:text-[#39A900]" /> {u.numTelf || '—'}
           </div>
         </div>
       ),
@@ -115,8 +115,8 @@ export const UsuariosPage: React.FC = () => {
         const placas = (u.vehiculos || []).map((v) => v.placa).filter(Boolean);
         const label = placas.length <= 2 ? placas.join(', ') : `${placas.slice(0, 2).join(', ')} +${placas.length - 2}`;
         return (
-          <div className="flex items-center gap-2 text-xs text-slate-700 font-semibold cursor-pointer" onClick={() => { setSelectedUser(u); setIsDetailsOpen(true); }}>
-            <Car size={12} className="text-slate-400" />
+          <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold cursor-pointer" onClick={() => { setSelectedUser(u); setIsDetailsOpen(true); }}>
+            <Car size={12} className="text-slate-400 dark:text-slate-500" />
             <span>{placas.length ? label : '—'}</span>
           </div>
         );
@@ -199,12 +199,12 @@ export const UsuariosPage: React.FC = () => {
       </header>
 
       {/* Barra de Filtros y Búsqueda */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-6 items-center">
+      <div className="bg-white dark:bg-[#121212] p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 flex flex-col md:flex-row gap-6 items-center transition-colors duration-500">
         <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
-          <Button variant={rol === 'TODOS' ? 'primary' : 'outline'} size="sm" onClick={() => setRol('TODOS')} className={`flex-1 md:flex-none ${rol === 'TODOS' ? 'bg-[#39A900] border-transparent' : 'bg-white'}`}>Todos</Button>
-          <Button variant={rol === 'USUARIO' ? 'primary' : 'outline'} size="sm" onClick={() => setRol('USUARIO')} className={`flex-1 md:flex-none ${rol === 'USUARIO' ? 'bg-[#39A900] border-transparent' : 'bg-white'}`}>Usuario</Button>
-          <Button variant={rol === 'OPERATIVO' ? 'primary' : 'outline'} size="sm" onClick={() => setRol('OPERATIVO')} className={`flex-1 md:flex-none ${rol === 'OPERATIVO' ? 'bg-[#39A900] border-transparent' : 'bg-white'}`}>Operativo</Button>
-          <Button variant={rol === 'ADMIN' ? 'primary' : 'outline'} size="sm" onClick={() => setRol('ADMIN')} className={`flex-1 md:flex-none ${rol === 'ADMIN' ? 'bg-[#39A900] border-transparent' : 'bg-white'}`}>Admin</Button>
+          <Button variant={rol === 'TODOS' ? 'primary' : 'outline'} size="sm" onClick={() => setRol('TODOS')} className={`flex-1 md:flex-none ${rol === 'TODOS' ? 'bg-[#39A900] border-transparent' : 'bg-white dark:bg-white/5 dark:text-slate-300'}`}>Todos</Button>
+          <Button variant={rol === 'USUARIO' ? 'primary' : 'outline'} size="sm" onClick={() => setRol('USUARIO')} className={`flex-1 md:flex-none ${rol === 'USUARIO' ? 'bg-[#39A900] border-transparent' : 'bg-white dark:bg-white/5 dark:text-slate-300'}`}>Usuario</Button>
+          <Button variant={rol === 'OPERATIVO' ? 'primary' : 'outline'} size="sm" onClick={() => setRol('OPERATIVO')} className={`flex-1 md:flex-none ${rol === 'OPERATIVO' ? 'bg-[#39A900] border-transparent' : 'bg-white dark:bg-white/5 dark:text-slate-300'}`}>Operativo</Button>
+          <Button variant={rol === 'ADMIN' ? 'primary' : 'outline'} size="sm" onClick={() => setRol('ADMIN')} className={`flex-1 md:flex-none ${rol === 'ADMIN' ? 'bg-[#39A900] border-transparent' : 'bg-white dark:bg-white/5 dark:text-slate-300'}`}>Admin</Button>
         </div>
 
         <div className="flex-1 w-full">
@@ -232,16 +232,16 @@ export const UsuariosPage: React.FC = () => {
       >
         {selectedUser && (
           <div className="space-y-6">
-            <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center text-slate-400">
+            <div className="flex items-center gap-6 p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/10 transition-colors duration-500">
+              <div className="w-20 h-20 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 overflow-hidden flex items-center justify-center text-slate-400">
                 {selectedUser.fotoPersona ? <img src={selectedUser.fotoPersona} alt={selectedUser.nombreCompleto} className="w-full h-full object-cover" /> : <UserIcon size={32} />}
               </div>
               <div>
-                <h3 className="text-xl font-black text-slate-900 leading-tight">{selectedUser.nombreCompleto}</h3>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">DOC: {selectedUser.documento}</p>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">{selectedUser.nombreCompleto}</h3>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">DOC: {selectedUser.documento}</p>
                 <div className="mt-2">
-                   {selectedUser.idTipoUsr === 1 && <Badge variant="outline">Usuario</Badge>}
-                   {selectedUser.idTipoUsr === 2 && <Badge variant="primary">Administrador</Badge>}
+                   {selectedUser.idTipoUsr === 1 && <Badge variant="neutral">Usuario</Badge>}
+                   {selectedUser.idTipoUsr === 2 && <Badge variant="info">Administrador</Badge>}
                    {selectedUser.idTipoUsr === 3 && <Badge variant="warning">Operativo</Badge>}
                 </div>
               </div>
@@ -252,13 +252,13 @@ export const UsuariosPage: React.FC = () => {
               <div className="grid gap-3">
                 {(selectedUser.vehiculos || []).length > 0 ? (
                   (selectedUser.vehiculos || []).map((v) => (
-                    <div key={v.placa} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl hover:border-emerald-500 transition-colors group">
+                    <div key={v.placa} className="flex items-center justify-between p-4 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl hover:border-emerald-500 transition-all duration-300 group">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                           <Car size={20} />
                         </div>
                         <div>
-                          <p className="text-sm font-black text-slate-900 tracking-tight">{v.placa}</p>
+                          <p className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{v.placa}</p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{v.color} • {typeof v.tipoVehiculo === 'string' ? v.tipoVehiculo : v.tipoVehiculo?.tipoVehiculo}</p>
                         </div>
                       </div>
@@ -268,7 +268,7 @@ export const UsuariosPage: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <div className="p-8 text-center bg-slate-50 dark:bg-white/5 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 transition-colors duration-500">
                     <p className="text-sm font-bold text-slate-400">Sin vehículos registrados</p>
                   </div>
                 )}

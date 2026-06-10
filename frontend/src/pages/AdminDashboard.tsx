@@ -1,20 +1,15 @@
 import React, { useMemo } from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, AreaChart, Area
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { 
-  Users, MapPin, Activity, TrendingUp, Clock,
-  Database, Calendar, AlertTriangle,
+  MapPin, Activity, TrendingUp, AlertTriangle,
   RefreshCcw, Percent
 } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { StatCard } from '../components/common/StatCard';
 import { ChartHeader } from '../components/common/ChartHeader';
 import { ExportButton } from '../components/admin/ExportButton';
-
-// Configuración de colores corporativos para gráficos
-const CHART_COLORS = ['#0f172a', '#059669', '#e11d48', '#0284c7', '#7c3aed'];
 
 /**
  * Dashboard Administrativo (Business Intelligence).
@@ -24,10 +19,7 @@ const CHART_COLORS = ['#0f172a', '#059669', '#e11d48', '#0284c7', '#7c3aed'];
 export const AdminDashboard: React.FC = () => {
   const { 
     resumen, 
-    trafico, 
-    ocupacionTipo, 
     tendencia, 
-    heatmap, 
     loading, 
     error, 
     refresh 
@@ -42,63 +34,68 @@ export const AdminDashboard: React.FC = () => {
   if (error) return <DashboardError message={error} retry={refresh} />;
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-  const traficoSafe = Array.isArray(trafico) ? trafico : [];
-  const ocupacionTipoSafe = Array.isArray(ocupacionTipo) ? ocupacionTipo : [];
   const tendenciaSafe = Array.isArray(tendencia) ? tendencia : [];
-  const heatmapSafe = Array.isArray(heatmap) ? heatmap : [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-700">
       {/* Botones de Acción alineados con el título del Layout superior */}
       <header className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 -mt-20 mb-10 relative z-50">
         <div className="flex flex-wrap gap-3">
           <ExportButton 
             label="EXCEL" 
             url={`${API_URL}/api/v1/dashboard/exportar/excel`} 
-            color="hover:text-emerald-700 hover:border-emerald-400 bg-white shadow-sm"
+            color="!bg-[#39A900] !text-white !border-transparent hover:!bg-[#2F8A00] shadow-[#39A900]/20"
           />
           <ExportButton 
             label="PDF" 
             url={`${API_URL}/api/v1/dashboard/exportar/pdf`} 
-            color="hover:text-rose-700 hover:border-rose-400 bg-white shadow-sm"
+            color="!bg-[#39A900] !text-white !border-transparent hover:!bg-[#2F8A00] shadow-[#39A900]/20"
           />
           <button 
             onClick={refresh}
-            className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-950 transition-all duration-200 shadow-[0_8px_20px_rgba(15,23,42,0.2)]"
+            className="p-2.5 bg-[#39A900] text-white rounded-xl hover:bg-[#2F8A00] transition-all duration-200 shadow-[0_8px_20px_rgba(57,169,0,0.25)]"
             title="Refrescar Analíticas"
           >
-            <RefreshCcw size={18} />
+            <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         <StatCard
-          icon={<MapPin className="text-slate-700" />}
+          icon={<MapPin className="text-slate-700 dark:text-slate-400" />}
           label="Total Espacios"
           value={resumen?.ocupacion?.total}
+          className="dark:bg-[#121212] dark:border-white/5 hover:dark:border-[#39A900]/30"
         />
         <StatCard
           icon={<Activity className="text-rose-600" />}
           label="Espacios Ocupados"
           value={resumen?.ocupacion?.ocupados}
+          className="dark:bg-[#121212] dark:border-white/5 hover:dark:border-rose-500/30"
         />
         <StatCard
           icon={<TrendingUp className="text-emerald-600" />}
           label="Espacios Disponibles"
           value={resumen?.ocupacion?.disponibles}
+          className="dark:bg-[#121212] dark:border-white/5 hover:dark:border-emerald-500/30"
         />
         <StatCard
           icon={<Percent className="text-blue-600" />}
           label="Ocupación"
           value={`${porcentajeOcupacion}%`}
+          className="dark:bg-[#121212] dark:border-white/5 hover:dark:border-blue-500/30"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-8 mb-12">
         {/* Rendimiento Semanal */}
-        <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200">
-          <ChartHeader title="Rendimiento Semanal" subtitle="Tendencia de los últimos 7 días" icon={<TrendingUp className="text-slate-700" />} />
+        <div className="bg-white dark:bg-[#121212] p-6 md:p-8 rounded-xl shadow-sm border border-slate-200 dark:border-white/5 transition-all duration-500 hover:dark:shadow-[0_0_40px_rgba(0,0,0,0.3)]">
+          <ChartHeader 
+            title="Rendimiento Semanal" 
+            subtitle="Tendencia de los últimos 7 días" 
+            icon={<TrendingUp className="text-slate-700 dark:text-slate-300" />} 
+          />
           <div className="h-[300px] md:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={tendenciaSafe}>

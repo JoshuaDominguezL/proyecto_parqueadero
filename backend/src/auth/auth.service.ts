@@ -474,7 +474,7 @@ export class AuthService implements OnModuleInit {
       order: { createdAt: 'DESC' },
     });
 
-    if (ultimoOtp) {
+    if (ultimoOtp && this.configService.get('NODE_ENV') !== 'development') {
       const UN_MINUTO = 60 * 1000;
       const tiempoTranscurrido = Date.now() - ultimoOtp.createdAt.getTime();
 

@@ -106,14 +106,14 @@ export const VehiculosPage: React.FC = () => {
       header: 'Vehículo',
       accessor: (v: AdminVehiculoItem) => (
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setSelectedVehiculo(v); setIsOwnerModalOpen(true); }}>
-          <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-blue-600">
+          <div className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-transparent dark:border-white/10 transition-colors duration-500">
             <Car size={18} />
           </div>
           <div>
-            <p className="text-sm font-black text-gray-900 tracking-tight flex items-center gap-2">
-              <Hash size={14} className="text-blue-600" /> {v.placa}
+            <p className="text-sm font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+              <Hash size={14} className="text-blue-600 dark:text-blue-400" /> {v.placa}
             </p>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
               {typeof v.tipoVehiculo === 'string' ? v.tipoVehiculo : v.tipoVehiculo?.tipoVehiculo || 'N/A'}
             </p>
           </div>
@@ -124,14 +124,14 @@ export const VehiculosPage: React.FC = () => {
       header: 'Propietario',
       accessor: (v: AdminVehiculoItem) => (
         <div className="flex flex-col cursor-pointer" onClick={() => { setSelectedVehiculo(v); setIsOwnerModalOpen(true); }}>
-          <span className="text-xs font-black text-slate-900">{v.usuario?.nombreCompleto || 'Sin asignar'}</span>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">DOC: {v.usuario?.documento || '—'}</span>
+          <span className="text-xs font-black text-slate-900 dark:text-slate-200">{v.usuario?.nombreCompleto || 'Sin asignar'}</span>
+          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">DOC: {v.usuario?.documento || '—'}</span>
         </div>
       ),
     },
     {
       header: 'Color',
-      accessor: (v: AdminVehiculoItem) => <span className="text-xs font-bold text-gray-700">{v.color || '—'}</span>,
+      accessor: (v: AdminVehiculoItem) => <span className="text-xs font-bold text-gray-700 dark:text-slate-300">{v.color || '—'}</span>,
     },
     {
       header: 'Estado',
@@ -168,16 +168,16 @@ export const VehiculosPage: React.FC = () => {
     <div className="space-y-8">
       <header className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 -mt-20 mb-10 relative z-50">
         <div className="flex flex-wrap gap-2">
-          <Button variant={soloAdentro ? 'primary' : 'outline'} size="sm" onClick={() => setSoloAdentro((v) => !v)} className={soloAdentro ? 'bg-[#39A900] border-transparent' : ''}>
+          <Button variant={soloAdentro ? 'primary' : 'outline'} size="sm" onClick={() => setSoloAdentro((v) => !v)} className={soloAdentro ? 'bg-[#39A900] border-transparent' : 'bg-white dark:bg-white/5 dark:text-slate-300 dark:border-white/10'}>
             {soloAdentro ? 'Solo ADENTRO' : 'Todos'}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => fetchVehiculos()} className="bg-white">
+          <Button variant="outline" size="sm" onClick={() => fetchVehiculos()} className="bg-white dark:bg-white/5 dark:text-slate-300 dark:border-white/10">
             Refrescar
           </Button>
         </div>
       </header>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+      <div className="bg-white dark:bg-[#121212] p-4 rounded-xl shadow-sm border border-slate-200 dark:border-white/5 flex items-center gap-4 transition-colors duration-500">
         <Input 
           icon={<Search size={20} />}
           placeholder="Buscar por placa o marca/tipo..."

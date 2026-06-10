@@ -113,6 +113,7 @@ export interface Vehiculo {
   color: string;
   idTipoVehiculo: number;
   tipoVehiculo?: TipoVehiculo | string;
+  isAdentro?: boolean;
 }
 
 export interface AdminUsuarioItem extends User {

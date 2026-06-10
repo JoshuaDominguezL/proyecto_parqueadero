@@ -3,6 +3,7 @@ import { BarChart, Bar, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { reportesService, type FlujoGroupBy } from '../../services/reportes.service';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Input } from '../../components/ui/Input';
 
 const formatBucket = (iso: string) => {
   const d = new Date(iso);
@@ -80,7 +81,7 @@ export const GraficosPage: React.FC = () => {
               label="Desde"
               type="date"
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDesde(e.target.value)}
             />
           </div>
 
@@ -89,7 +90,7 @@ export const GraficosPage: React.FC = () => {
               label="Hasta"
               type="date"
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHasta(e.target.value)}
             />
           </div>
 
